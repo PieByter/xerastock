@@ -1,0 +1,385 @@
+// Prisma schema — Stock Analyst
+// Mengikuti model data PRD Bagian 9. Database: PostgreSQL (Supabase / lokal).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- User ----------
+
+model User {
+  id             String   @id @default(uuid()) @db.Uuid
+  email          String   @unique
+  name           String?
+  discordUserId  String?  @unique
+  timezone       String   @default("Asia/Jakarta")
+  settingsJson   Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  watchlists Watchlist[]
+  alerts     Alert[]
+  strategies Strategy[]
+  presets    ScreenerPreset[]
+}
+
+// ---------- Master Saham ----------
+
+model Stock {
+  id           String   @id @default(uuid()) @db.Uuid
+  ticker       String   @unique // "BBCA.JK"
+  name         String
+  exchange     String   @default("IDX")
+  sector       String?
+  board        String?
+  isActive     Boolean  @default(true)
+  yahooSymbol  String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  watchlistItems     WatchlistItem[]
+  priceBars          PriceBar[]
+  indicatorSnapshots IndicatorSnapshot[]
+  fundamentalSnapshots FundamentalSnapshot[]
+  alerts             Alert[]
+  signals            Signal[]
+  mlPredictions      MLPrediction[]
+  trades             Trade[]
+  positions          Position[]
+
+  @@index([isActive])
+}
+
+// ---------- Data Harga ----------
+
+model PriceBar {
+  id        String   @id @default(uuid()) @db.Uuid
+  stockId   String   @db.Uuid
+  timestamp DateTime // session date (tanggal bursa)
+  open      Decimal  @db.Decimal(18, 4)
+  high      Decimal  @db.Decimal(18, 4)
+  low       Decimal  @db.Decimal(18, 4)
+  close     Decimal  @db.Decimal(18, 4)
+  adjClose  Decimal  @db.Decimal(18, 4)
+  volume    BigInt
+  source    String   @default("yahoo")
+  isAdjusted Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  stock Stock @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@unique([stockId, timestamp])
+  @@index([stockId, timestamp(sort: Desc)])
+}
+
+// ---------- Indikator & Fundamental ----------
+
+model IndicatorSnapshot {
+  id            String   @id @default(uuid()) @db.Uuid
+  stockId       String   @db.Uuid
+  date          DateTime
+  timeframe     String   @default("1D")
+  indicatorsJson Json
+  ohlcvRef      String?
+  createdAt     DateTime @default(now())
+
+  stock Stock @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@unique([stockId, date, timeframe])
+  @@index([stockId, date(sort: Desc)])
+}
+
+model FundamentalSnapshot {
+  id         String   @id @default(uuid()) @db.Uuid
+  stockId    String   @db.Uuid
+  asOfDate   DateTime
+  pbv        Decimal? @db.Decimal(18, 4)
+  per        Decimal? @db.Decimal(18, 4)
+  roe        Decimal? @db.Decimal(18, 4)
+  eps        Decimal? @db.Decimal(18, 4)
+  revenue    Decimal? @db.Decimal(24, 4)
+  netIncome  Decimal? @db.Decimal(24, 4)
+  divYield   Decimal? @db.Decimal(18, 4)
+  marketCap  Decimal? @db.Decimal(24, 4)
+  source     String   @default("yahoo")
+  confidence Float    @default(0.5)
+  createdAt  DateTime @default(now())
+
+  stock Stock @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@unique([stockId, asOfDate])
+  @@index([stockId, asOfDate(sort: Desc)])
+}
+
+// ---------- Watchlist ----------
+
+model Watchlist {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @db.Uuid
+  name          String
+  isDefault     Boolean  @default(false)
+  notifPrefsJson Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items WatchlistItem[]
+
+  @@unique([userId, name])
+}
+
+model WatchlistItem {
+  id           String   @id @default(uuid()) @db.Uuid
+  watchlistId  String   @db.Uuid
+  stockId      String   @db.Uuid
+  addedAt      DateTime @default(now())
+  note         String?
+
+  watchlist Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  stock     Stock     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@unique([watchlistId, stockId])
+}
+
+// ---------- Alert ----------
+
+model Alert {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @db.Uuid
+  stockId         String    @db.Uuid
+  type            String // PRICE_ABOVE | PRICE_BELOW | SIGNAL | CHANNEL_BREAK
+  conditionJson   Json
+  repeat          Boolean   @default(false)
+  status          String    @default("ACTIVE") // ACTIVE | TRIGGERED | DISABLED
+  lastTriggeredAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stock Stock  @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  events AlertEvent[]
+
+  @@index([userId, status])
+  @@index([stockId])
+}
+
+// ---------- Sinyal ----------
+
+model Signal {
+  id         String   @id @default(uuid()) @db.Uuid
+  stockId    String   @db.Uuid
+  strategyId String?  @db.Uuid
+  source     String // TECHNICAL | FUNDAMENTAL | AI | RULE
+  direction  String // BUY | SELL | WATCH
+  reasonJson Json
+  price      Decimal  @db.Decimal(18, 4)
+  strength   Float    @default(0.5)
+  status     String   @default("NEW") // NEW | NOTIFIED | EXECUTED | EXPIRED
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  stock        Stock          @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  strategy     Strategy?      @relation(fields: [strategyId], references: [id], onDelete: SetNull)
+  mlPrediction MLPrediction?
+  trades       Trade[]
+  events       AlertEvent[]
+
+  @@unique([stockId, direction, source, createdAt])
+  @@index([stockId, createdAt(sort: Desc)])
+  @@index([status])
+}
+
+// ---------- ML ----------
+
+model Model {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  version      String
+  artifactPath String?
+  trainedAt    DateTime?
+  metricsJson  Json?
+  status       String   @default("EXPERIMENTAL") // ACTIVE | EXPERIMENTAL | ARCHIVED
+  createdAt    DateTime @default(now())
+
+  predictions MLPrediction[]
+
+  @@unique([name, version])
+}
+
+model MLPrediction {
+  id            String   @id @default(uuid()) @db.Uuid
+  signalId      String?  @unique @db.Uuid
+  stockId       String   @db.Uuid
+  modelId       String   @db.Uuid
+  score         Float
+  label         String
+  confidence    Float
+  featuresHash  String
+  createdAt     DateTime @default(now())
+
+  signal Signal? @relation(fields: [signalId], references: [id], onDelete: SetNull)
+  stock  Stock   @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  model  Model   @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@index([modelId, createdAt(sort: Desc)])
+  @@index([stockId])
+}
+
+// ---------- Strategi & Bot ----------
+
+model Strategy {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @db.Uuid
+  name           String
+  stockIds       String[] // array ticker
+  entryRulesJson Json
+  exitRulesJson  Json
+  timeframe      String   @default("1D")
+  riskParamsJson Json
+  mode           String   @default("SIGNAL_ONLY") // SIGNAL_ONLY | PAPER | LIVE
+  isActive       Boolean  @default(true)
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  signals   Signal[]
+  botConfig BotConfig?
+  trades    Trade[]
+  positions Position[]
+  accounts  PaperAccount[]
+
+  @@index([userId, isActive])
+}
+
+model BotConfig {
+  id              String   @id @default(uuid()) @db.Uuid
+  strategyId      String?  @unique @db.Uuid
+  guildId         String?
+  notifyChannelId String?
+  adminChannelId  String?
+  ownerDiscordId  String?
+  mode            String   @default("SIGNAL_ONLY")
+  status          String   @default("STOPPED") // RUNNING | STOPPED
+  killSwitch      Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+
+  strategy Strategy? @relation(fields: [strategyId], references: [id], onDelete: SetNull)
+}
+
+// ---------- Trading ----------
+
+model Trade {
+  id              String   @id @default(uuid()) @db.Uuid
+  strategyId      String   @db.Uuid
+  signalId        String?  @db.Uuid
+  stockId         String   @db.Uuid
+  side            String // BUY | SELL
+  mode            String // PAPER | LIVE
+  qty             Int
+  price           Decimal  @db.Decimal(18, 4)
+  fee             Decimal  @db.Decimal(18, 4) @default(0)
+  pnl             Decimal? @db.Decimal(18, 4)
+  status          String   @default("OPEN") // OPEN | CLOSED | CANCELLED | REJECTED
+  requestId       String   @unique
+  decisionLogJson Json
+  openedAt        DateTime @default(now())
+  closedAt        DateTime?
+
+  strategy Strategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  signal   Signal?  @relation(fields: [signalId], references: [id], onDelete: SetNull)
+  stock    Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@index([strategyId, openedAt(sort: Desc)])
+  @@index([stockId])
+}
+
+model Position {
+  id            String   @id @default(uuid()) @db.Uuid
+  strategyId    String   @db.Uuid
+  stockId       String   @db.Uuid
+  mode          String // PAPER | LIVE
+  qty           Int
+  avgEntry      Decimal  @db.Decimal(18, 4)
+  currentValue  Decimal  @db.Decimal(18, 4)
+  unrealizedPnl Decimal  @db.Decimal(18, 4) @default(0)
+  openedAt      DateTime @default(now())
+
+  strategy Strategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  stock    Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@unique([strategyId, stockId, mode])
+}
+
+model PaperAccount {
+  id             String   @id @default(uuid()) @db.Uuid
+  strategyId     String?  @db.Uuid
+  balance        Decimal  @db.Decimal(18, 4)
+  initialBalance Decimal  @db.Decimal(18, 4)
+  currency       String   @default("IDR")
+  updatedAt      DateTime @updatedAt
+
+  strategy Strategy? @relation(fields: [strategyId], references: [id], onDelete: SetNull)
+}
+
+// ---------- Notifikasi (Outbox) ----------
+
+model AlertEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  alertId    String?  @db.Uuid
+  signalId   String?  @db.Uuid
+  type       String
+  sentTo     String
+  status     String   @default("QUEUED") // QUEUED | SENT | FAILED
+  payloadJson Json
+  createdAt  DateTime @default(now())
+  sentAt     DateTime?
+
+  alert  Alert?  @relation(fields: [alertId], references: [id], onDelete: SetNull)
+  signal Signal? @relation(fields: [signalId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ---------- Logging ----------
+
+model LogEntry {
+  id          String   @id @default(uuid()) @db.Uuid
+  service     String
+  level       String // debug | info | warn | error
+  message     String
+  contextJson Json?
+  createdAt   DateTime @default(now())
+
+  @@index([service, createdAt(sort: Desc)])
+  @@index([level])
+}
+
+// ---------- Screener ----------
+
+model ScreenerPreset {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  name        String
+  filtersJson Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+}
+
+// ---------- Kalender Bursa ----------
+
+model CalendarDay {
+  date         DateTime @id
+  isTradingDay Boolean  @default(true)
+  note         String?
+}

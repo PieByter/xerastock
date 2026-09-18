@@ -1,0 +1,29 @@
+{
+  "name": "@stock-analyst/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@stock-analyst/db": "*",
+    "@stock-analyst/engine": "*",
+    "@stock-analyst/shared": "*",
+    "discord.js": "^14.15.3",
+    "node-cron": "^3.0.3",
+    "pino": "^9.3.2",
+    "yahoo-finance2": "^2.11.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.4"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "stock-analyst",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Stock Analyst — Platform analisis saham IDX + Bot Discord + Auto Trading (Fase lanjutan)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @stock-analyst/web",
+    "dev:web": "npm run dev --workspace @stock-analyst/web",
+    "dev:worker": "npm run dev --workspace @stock-analyst/worker",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:generate": "npm run db:generate --workspace @stock-analyst/db",
+    "db:migrate": "npm run db:migrate --workspace @stock-analyst/db",
+    "db:push": "npm run db:push --workspace @stock-analyst/db",
+    "db:studio": "npm run db:studio --workspace @stock-analyst/db"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
