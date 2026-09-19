@@ -152,6 +152,49 @@ export function volumeSma(candles: Candle[], period = 20): (number | null)[] {
     return sma(candles.map((c) => c.volume), period);
 }
 
+/** Stochastic Oscillator (%K, %D). */
+export interface StochasticResult {
+    k: (number | null)[];
+    d: (number | null)[];
+}
+
+export function stochastic(
+    candles: Candle[],
+    period = 14,
+    smoothK = 3,
+    smoothD = 3,
+): StochasticResult {
+    const rawK: (number | null)[] = new Array(candles.length).fill(null);
+    for (let i = period - 1; i < candles.length; i++) {
+        const slice = candles.slice(i - period + 1, i + 1);
+        const highestHigh = Math.max(...slice.map((c) => c.high));
+        const lowestLow = Math.min(...slice.map((c) => c.low));
+        const currentClose = candles[i]!.close;
+        const range = highestHigh - lowestLow;
+        rawK[i] = range === 0 ? 50 : ((currentClose - lowestLow) / range) * 100;
+    }
+
+    // Smooth rawK to get %K
+    const k: (number | null)[] = new Array(candles.length).fill(null);
+    for (let i = period - 1 + smoothK - 1; i < candles.length; i++) {
+        const slice = rawK.slice(i - smoothK + 1, i + 1);
+        if (slice.every((val) => val != null)) {
+            k[i] = slice.reduce((a, b) => a! + b!, 0)! / smoothK;
+        }
+    }
+
+    // Smooth %K to get %D
+    const d: (number | null)[] = new Array(candles.length).fill(null);
+    for (let i = period - 1 + smoothK - 1 + smoothD - 1; i < candles.length; i++) {
+        const slice = k.slice(i - smoothD + 1, i + 1);
+        if (slice.every((val) => val != null)) {
+            d[i] = slice.reduce((a, b) => a! + b!, 0)! / smoothD;
+        }
+    }
+
+    return { k, d };
+}
+
 /** Ambil nilai terakhir yang bukan null. */
 export function lastNonNull<T>(arr: (T | null)[]): T | null {
     for (let i = arr.length - 1; i >= 0; i--) {

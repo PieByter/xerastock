@@ -27,6 +27,9 @@ export interface PriceBar {
     close: number;
     adjClose: number;
     volume: number;
+    foreignBuy?: number;
+    foreignSell?: number;
+    netForeign?: number;
     source: string;
     isAdjusted: boolean;
 }
@@ -85,11 +88,13 @@ export interface FundamentalSnapshot {
 export type SignalSource = "TECHNICAL" | "FUNDAMENTAL" | "AI" | "RULE";
 export type SignalDirection = "BUY" | "SELL" | "WATCH";
 export type SignalStatus = "NEW" | "NOTIFIED" | "EXECUTED" | "EXPIRED";
+export type StrategyType = "BSJP" | "BPJS" | "SWING";
 
 export interface Signal {
     id: string;
     stockId: string;
     strategyId?: string | null;
+    strategyType?: StrategyType;
     source: SignalSource;
     direction: SignalDirection;
     reason: string[]; // rule yang terpenuhi
@@ -97,6 +102,7 @@ export interface Signal {
     strength: number; // 0..1
     createdAt: Date;
     status: SignalStatus;
+    detailsJson?: Record<string, unknown>;
 }
 
 // ---------- Strategi & Bot ----------
@@ -250,4 +256,117 @@ export interface ScreenerPreset {
     userId: string;
     name: string;
     filters: ScreenerFilter[];
+}
+
+// ---------- Broker Summary & Bandarmology (PRD §4.3 & §10.3) ----------
+
+export interface BrokerSummaryItem {
+    ticker: string;
+    date: string;
+    brokerCode: string;
+    brokerName?: string;
+    buyFreq: number;
+    buyVolume: number;
+    buyValue: number;
+    sellFreq: number;
+    sellVolume: number;
+    sellValue: number;
+    netVolume: number;
+    netValue: number;
+    investorType: "DOMESTIC" | "FOREIGN";
+}
+
+export interface ForeignFlowItem {
+    date: string;
+    foreignBuy: number;
+    foreignSell: number;
+    netForeign: number;
+    cumulativeNetForeign: number;
+}
+
+export interface BrokerSummaryProvider {
+    getBrokerSummary(ticker: string, date: string): Promise<BrokerSummaryItem[]>;
+    getForeignFlow(ticker: string, from: string, to: string): Promise<ForeignFlowItem[]>;
+}
+
+// ---------- Notifier Abstraction (PRD §10.2) ----------
+
+export interface SignalMatch {
+    id: string;
+    ticker: string;
+    strategyType: StrategyType;
+    direction: SignalDirection;
+    price: number;
+    matchedAt: Date;
+    conditionSummary: string;
+    volume: number;
+    foreignNetBuy?: number;
+    detailsJson?: Record<string, unknown>;
+}
+
+export interface NotificationChannel {
+    send(signal: SignalMatch): Promise<void>;
+}
+
+// ---------- Corporate Action & Dividen (PRD §4.4) ----------
+
+export type CorporateActionType = "DIVIDEND" | "RUPS" | "RIGHTS_ISSUE" | "STOCK_SPLIT";
+
+export interface CorporateAction {
+    id: string;
+    ticker: string;
+    type: CorporateActionType;
+    title: string;
+    cumDate: string;
+    exDate: string;
+    recordDate?: string;
+    paymentDate?: string;
+    amountOrRatio?: string;
+    daysUntilCumDate: number;
+    detail?: string;
+}
+
+// ---------- Berita & Sentiment AI (PRD §4.5) ----------
+
+export type SentimentTag = "POSITIVE" | "NEUTRAL" | "NEGATIVE";
+
+export interface NewsArticle {
+    id: string;
+    ticker?: string;
+    relatedTickers: string[];
+    source: string;
+    title: string;
+    url: string;
+    publishedAt: string;
+    aiSummary: string;
+    aiSentiment: SentimentTag;
+}
+
+// ---------- Portfolio & Transaksi (google-design/prompt.txt) ----------
+
+export interface PortfolioHolding {
+    ticker: string;
+    companyName: string;
+    shares: number;
+    lots: number;
+    avgPrice: number;
+    currentPrice: number;
+    marketValue: number;
+    unrealizedPnl: number;
+    unrealizedPnlPct: number;
+    dailyChangePct: number;
+    sector: string;
+    weightPct: number;
+}
+
+export interface PortfolioSummary {
+    totalValue: number;
+    totalInvested: number;
+    todayPnl: number;
+    todayPnlPct: number;
+    totalPnl: number;
+    totalPnlPct: number;
+    cashBalance: number;
+    holdings: PortfolioHolding[];
+    sectorAllocation: { sector: string; value: number; percentage: number }[];
 }

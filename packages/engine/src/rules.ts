@@ -15,6 +15,16 @@ export interface RuleContext {
         pbv?: number;
         per?: number;
     };
+    /** Data foreign flow & broker summary (PRD §4.3 & §10.1). */
+    foreignFlow?: {
+        todayNetForeign?: number;
+        multiDayNetForeign?: number;
+    };
+    /** Data sentimen berita (PRD §4.5). */
+    sentiment?: {
+        hasNegativeNews?: boolean;
+        positiveCount?: number;
+    };
 }
 
 export interface RuleResult {
@@ -251,5 +261,224 @@ export function evaluateRules(
     return null;
 }
 
-export { sma, ema, rsi, macd, bollinger, lastNonNull };
-export type { Candle } from "./indicators";
+// ---------- Strategi Khusus IDX (PRD §10.1) ----------
+
+export interface StrategyEvaluationResult {
+    matched: boolean;
+    strategyType: "BSJP" | "BPJS" | "SWING";
+    direction: SignalDirection;
+    reasons: string[];
+    strength: number;
+    price: number;
+}
+
+/** Helper ambil nilai RSI terakhir */
+function lastRsiValue(arr: (number | null)[]): number | null {
+    return lastNonNull(arr);
+}
+
+/**
+ * BSJP (Beli Sore, Jual Pagi) — Dievaluasi di sesi sore (~14:30–15:50 WIB)
+ * Syarat:
+ * 1. Volume spike (volume bar terakhir > 1.4x rata-rata 20 hari)
+ * 2. Foreign net buy hari ini positif (> 0)
+ * 3. Candle bullish closing di dekat level tertinggi (close >= low + 0.70 * (high - low))
+ */
+export function evaluateBsjp(ctx: RuleContext): StrategyEvaluationResult | null {
+    if (ctx.candles.length < 20) return null;
+    const last = ctx.candles[ctx.candles.length - 1]!;
+    const volumes = ctx.candles.map((c) => c.volume);
+    const volSma = sma(volumes, 20);
+    const avgVol = volSma[volSma.length - 1] ?? 0;
+
+    const reasons: string[] = [];
+    let score = 0;
+
+    // 1. Volume spike
+    if (avgVol > 0 && last.volume >= avgVol * 1.4) {
+        reasons.push(`Volume spike ${(last.volume / avgVol).toFixed(1)}x rata-rata 20 hari`);
+        score += 0.35;
+    }
+
+    // 2. Foreign net buy
+    if ((ctx.foreignFlow?.todayNetForeign ?? 0) > 0) {
+        reasons.push("Net foreign buy hari ini positif");
+        score += 0.35;
+    }
+
+    // 3. Candle bullish closing dekat high
+    const dayRange = last.high - last.low;
+    const isBullishClose = dayRange > 0 && last.close >= last.open && (last.close - last.low) >= (0.7 * dayRange);
+    if (isBullishClose) {
+        reasons.push("Candle bullish menutup di dekat level tertinggi hari ini");
+        score += 0.3;
+    }
+
+    if (score >= 0.65) {
+        return {
+            matched: true,
+            strategyType: "BSJP",
+            direction: "BUY",
+            reasons,
+            strength: Math.min(1, score),
+            price: last.close,
+        };
+    }
+    return null;
+}
+
+/**
+ * BPJS / Day Trade (Beli Pagi, Jual Sore) — Dievaluasi di sesi pagi (~09:00–10:30 WIB)
+ * Syarat:
+ * 1. Gap-up open (>0.8% di atas close kemarin) atau breakout
+ * 2. RSI belum overbought (< 68)
+ * 3. Volume aktif
+ */
+export function evaluateBpjs(ctx: RuleContext): StrategyEvaluationResult | null {
+    if (ctx.candles.length < 15) return null;
+    const last = ctx.candles[ctx.candles.length - 1]!;
+    const prev = ctx.candles[ctx.candles.length - 2]!;
+    const c = closes(ctx.candles);
+    const rsiValues = rsi(c, 14);
+    const lastRsi = lastRsiValue(rsiValues);
+
+    const reasons: string[] = [];
+    let score = 0;
+
+    // 1. Gap up atau momentum kuat pagi
+    const gapPct = ((last.open - prev.close) / prev.close) * 100;
+    if (gapPct >= 0.8) {
+        reasons.push(`Buka gap up +${gapPct.toFixed(1)}% di sesi pagi`);
+        score += 0.4;
+    } else if (last.close > prev.high) {
+        reasons.push("Breakout di atas high hari sebelumnya");
+        score += 0.35;
+    }
+
+    // 2. RSI belum overbought
+    if (lastRsi != null && lastRsi < 68 && lastRsi >= 45) {
+        reasons.push(`RSI (${lastRsi.toFixed(1)}) memiliki ruang momentum beli`);
+        score += 0.35;
+    }
+
+    // 3. Volume aktif
+    if (last.volume > 0) {
+        score += 0.25;
+    }
+
+    if (score >= 0.65) {
+        return {
+            matched: true,
+            strategyType: "BPJS",
+            direction: "BUY",
+            reasons,
+            strength: Math.min(1, score),
+            price: last.close,
+        };
+    }
+    return null;
+}
+
+/**
+ * Swing / Hold — Dievaluasi End-of-Day (16:00 WIB)
+ * Syarat:
+ * 1. Trend indikator positif (EMA20 >= EMA50 atau MACD > 0)
+ * 2. Akumulasi asing multi-hari (>0 akumulatif)
+ * 3. Tidak ada sentimen berita negatif mayor
+ */
+export function evaluateSwing(ctx: RuleContext): StrategyEvaluationResult | null {
+    if (ctx.candles.length < 26) return null;
+    const last = ctx.candles[ctx.candles.length - 1]!;
+    const c = closes(ctx.candles);
+    const ema20 = ema(c, 20);
+    const ema50 = ema(c, 50);
+    const macdRes = macd(c);
+
+    const reasons: string[] = [];
+    let score = 0;
+
+    const lastEma20 = lastNonNull(ema20);
+    const lastEma50 = lastNonNull(ema50);
+    if (lastEma20 != null && lastEma50 != null && lastEma20 >= lastEma50) {
+        reasons.push("Trend bullish: EMA20 berada di atas EMA50");
+        score += 0.35;
+    }
+
+    const lastHist = lastNonNull(macdRes.histogram);
+    if (lastHist != null && lastHist > 0) {
+        reasons.push("MACD histogram positif");
+        score += 0.25;
+    }
+
+    // Akumulasi asing multi-hari
+    if ((ctx.foreignFlow?.multiDayNetForeign ?? 0) > 0) {
+        reasons.push("Tren akumulasi asing positif dalam multi-hari");
+        score += 0.3;
+    }
+
+    // Filter sentimen berita
+    if (ctx.sentiment?.hasNegativeNews) {
+        return null;
+    } else {
+        score += 0.1;
+    }
+
+    if (score >= 0.65) {
+        return {
+            matched: true,
+            strategyType: "SWING",
+            direction: "BUY",
+            reasons,
+            strength: Math.min(1, score),
+            price: last.close,
+        };
+    }
+    return null;
+}
+
+/**
+ * Deteksi akumulasi broker (PRD §4.3)
+ * Menemukan broker yang net buy selama 3 hari berturut-turut atau lebih.
+ */
+export interface BrokerAccumulationAlert {
+    brokerCode: string;
+    consecutiveDays: number;
+    totalNetValue: number;
+    message: string;
+}
+
+export function detectBrokerAccumulation(
+    history: Array<{ date: string; brokerCode: string; netValue: number }>,
+): BrokerAccumulationAlert[] {
+    const alerts: BrokerAccumulationAlert[] = [];
+    const brokerMap = new Map<string, Array<{ date: string; netValue: number }>>();
+    for (const item of history) {
+        if (!brokerMap.has(item.brokerCode)) {
+            brokerMap.set(item.brokerCode, []);
+        }
+        brokerMap.get(item.brokerCode)!.push(item);
+    }
+
+    for (const [code, records] of brokerMap.entries()) {
+        records.sort((a, b) => b.date.localeCompare(a.date));
+        let count = 0;
+        let totalVal = 0;
+        for (const r of records) {
+            if (r.netValue > 0) {
+                count++;
+                totalVal += r.netValue;
+            } else {
+                break;
+            }
+        }
+        if (count >= 3) {
+            alerts.push({
+                brokerCode: code,
+                consecutiveDays: count,
+                totalNetValue: totalVal,
+                message: `Broker ${code} net buy ${count} hari berturut-turut`,
+            });
+        }
+    }
+    return alerts;
+}

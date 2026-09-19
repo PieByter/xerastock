@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: 'class', theme: { extend: { colors: { 'inverse-surface': '#dae3ee', 'on-surface': '#dae3ee', 'on-secondary-fixed': '#001f25', 'on-tertiary-fixed': '#002109', 'on-tertiary-fixed-variant': '#005321', 'inverse-primary': '#005bbf', 'surface-bright': '#313a43', 'tertiary': '#4ae176', 'on-primary': '#002f68', 'primary': '#acc7ff', 'on-secondary': '#00363e', 'on-primary-container': '#00285b', 'primary-container': '#498fff', 'secondary': '#5de6ff', 'surface-container-lowest': '#060f16', 'surface-variant': '#2d363e', 'surface': '#0b141c', 'error': '#ffb4ab', 'secondary-fixed-dim': '#2fd9f4', 'outline-variant': '#414754', 'tertiary-fixed-dim': '#4ae176', 'background': '#0b141c', 'surface-container-low': '#141c24', 'surface-container': '#182028', 'on-error-container': '#ffdad6', 'inverse-on-surface': '#29313a', 'secondary-container': '#00cbe6', 'on-primary-fixed-variant': '#004492', 'outline': '#8b909f', 'on-secondary-fixed-variant': '#004e5a', 'surface-tint': '#acc7ff', 'on-tertiary-container': '#003111', 'error-container': '#93000a', 'on-tertiary': '#003915', 'surface-dim': '#0b141c', 'primary-fixed': '#d7e2ff', 'on-surface-variant': '#c1c6d6', 'primary-fixed-dim': '#acc7ff', 'on-secondary-container': '#00515d', 'on-background': '#dae3ee', 'tertiary-fixed': '#6bff8f', 'secondary-fixed': '#a2eeff', 'tertiary-container': '#00a74b', 'surface-container-highest': '#2d363e', 'on-primary-fixed': '#001a40', 'surface-container-high': '#222b33', 'on-error': '#690005' }, borderRadius: { DEFAULT: '0.25rem', lg: '0.5rem', xl: '0.75rem', full: '9999px' }, spacing: { 'space-xs': '0.25rem', 'space-md': '0.75rem', 'space-lg': '1.25rem', 'gutter-desktop': '1.25rem', 'gutter': '1rem', 'space-sm': '0.5rem', 'space-xl': '2rem', 'margin': '1rem', 'margin-desktop': '2rem' }, fontFamily: { 'body-sm': ['Inter'], 'data-mono-xl-mobile': ['JetBrains Mono'], 'headline-xl': ['Inter'], 'data-mono-sm': ['JetBrains Mono'], 'data-mono-lg': ['JetBrains Mono'], 'label-md': ['Inter'], 'body-lg': ['Inter'], 'headline-lg': ['Inter'], 'data-mono-md': ['JetBrains Mono'], 'data-mono-xl': ['JetBrains Mono'], 'body-md': ['Inter'], 'headline-xl-mobile': ['Inter'], 'label-sm': ['JetBrains Mono'], 'headline-md': ['Inter'] }, fontSize: { 'body-sm': ['12px', { lineHeight: '16px', fontWeight: '400' }], 'data-mono-xl-mobile': ['22px', { lineHeight: '28px', fontWeight: '600' }], 'headline-xl': ['32px', { lineHeight: '40px', letterSpacing: '-0.02em', fontWeight: '700' }], 'data-mono-sm': ['11px', { lineHeight: '14px', fontWeight: '400' }], 'data-mono-lg': ['16px', { lineHeight: '24px', fontWeight: '500' }], 'label-md': ['12px', { lineHeight: '16px', letterSpacing: '0.04em', fontWeight: '600' }], 'body-lg': ['16px', { lineHeight: '24px', fontWeight: '400' }], 'headline-lg': ['24px', { lineHeight: '32px', letterSpacing: '-0.01em', fontWeight: '600' }], 'data-mono-md': ['13px', { lineHeight: '18px', fontWeight: '500' }], 'data-mono-xl': ['28px', { lineHeight: '36px', letterSpacing: '-0.02em', fontWeight: '600' }], 'body-md': ['14px', { lineHeight: '20px', fontWeight: '400' }], 'headline-xl-mobile': ['24px', { lineHeight: '32px', letterSpacing: '-0.01em', fontWeight: '700' }], 'label-sm': ['10px', { lineHeight: '12px', letterSpacing: '0.06em', fontWeight: '600' }], 'headline-md': ['18px', { lineHeight: '24px', fontWeight: '600' }] } } } };</script></head><body class="bg-background font-body-md text-body-md text-on-surface antialiased min-h-screen"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-low z-50 flex flex-col justify-between py-4 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col"><div class="px-5 pb-5 flex items-center gap-3"><img alt="IDX Terminal Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1X-VOSIyLwjLclSaA0lXRtDcW43jFcPR5ey-wjdDLVFq5ExWqGzdS_WWcDpUCierGYMr1X9kaGJyk008vcq9GUD5DHzd73yhAnHyO-qQ-J7po6HQ01ppnPDMTjVUSzkoYLZzJ_9HvcdcftRb8qIS0167apqARslIcLuc0EtbAq_FzQgcs3ydJ8qY-L5HRccK2opB3zb4aE7KVVtnyPR62FgycfmAiwRJgXAUSJDxHr4rpuSWTJarzv17g"/><div class="flex items-center gap-2"><span class="font-headline-md text-headline-md text-on-surface tracking-tight">IDX Terminal</span><span class="px-1.5 py-0.5 rounded bg-secondary-container/20 text-secondary font-label-sm text-label-sm font-bold tracking-wider">PRO</span></div></div><div class="px-4 py-2"><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline px-2">Navigation</span></div><nav class="flex flex-col gap-0.5 px-3" data-active-classes="bg-surface-container-high text-primary font-bold"><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="overview" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">grid_view</span><span class="font-body-md text-body-md">Overview</span></div></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="portfolio" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">account_balance_wallet</span><span class="font-body-md text-body-md">Portfolio</span></div><span class="font-data-mono-sm text-data-mono-sm px-1.5 py-0.5 rounded bg-surface-container text-tertiary">Rp 482M</span></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="watchlist" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">visibility</span><span class="font-body-md text-body-md">Watchlist</span></div><span class="font-data-mono-sm text-data-mono-sm px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant">18</span></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="broker-flow" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">swap_horiz</span><span class="font-body-md text-body-md">Broker Flow</span></div></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="stock-screener" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">filter_alt</span><span class="font-body-md text-body-md">Stock Screener</span></div></a><a aria-current="page" class="flex items-center justify-between px-3 py-2 rounded-lg transition-all bg-surface-container-high text-primary font-bold" data-path="technical-analysis" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">candlestick_chart</span><span class="font-body-md text-body-md">Technical Analysis</span></div></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="signals-alerts" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">notifications_active</span><span class="font-body-md text-body-md">Signals &amp; Alerts</span></div><span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-error-container text-error font-medium">3 Baru</span></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="news" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">newspaper</span><span class="font-body-md text-body-md">News</span></div></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="ai-assistant" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">psychology</span><span class="font-body-md text-body-md">Claude FinAI</span></div><span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-primary-container/20 text-primary">v2.5</span></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="settings" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">settings</span><span class="font-body-md text-body-md">Settings</span></div></a></nav></div><div class="px-4"><div class="p-3 rounded-lg bg-surface-container flex flex-col gap-2 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center justify-between"><span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Alert Webhook</span><div class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-tertiary animate-pulse"></span><span class="font-label-sm text-label-sm text-tertiary font-medium">Live</span></div></div><div class="flex items-center gap-2"><span class="material-symbols-outlined text-base text-on-surface-variant">rss_feed</span><span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant truncate">#idx-signals</span></div><p class="font-label-sm text-label-sm text-outline truncate">Bot Connected • Latency 14ms</p></div></div></aside><div class="pl-64 flex flex-col min-h-screen"><header class="fixed top-0 left-64 right-0 h-16 bg-surface/90 backdrop-blur-xl z-40 px-6 flex items-center justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-4 flex-1 max-w-2xl"><div class="relative w-full max-w-md"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span><input class="w-full pl-9 pr-14 py-2 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-secondary" placeholder="Search IDX ticker, broker code (e.g. BBCA, YP, AK)..." type="text"/><div class="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-surface-container-high text-outline font-data-mono-sm text-data-mono-sm border-0">⌘K</div></div><div class="hidden xl:flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-surface-container-low font-data-mono-sm text-data-mono-sm"><div class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-tertiary animate-pulse"></span><span class="text-tertiary font-semibold">PASAR BUKA</span></div><span class="text-outline-variant">•</span><div class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">IHSG 7.324,80</span><span class="text-tertiary">(+0,42% | +30,85)</span></div><span class="text-outline-variant">•</span><span class="text-on-surface-variant">Sesi 2 • 14:15:20 WIB</span></div></div><div class="flex items-center gap-3.5"><button class="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-all" type="button"><span class="material-symbols-outlined text-base text-secondary">add</span><span>Order / Transaksi</span></button><button class="relative p-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" type="button"><span class="material-symbols-outlined text-xl">notifications</span><span class="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-error ring-2 ring-surface"></span></button><button class="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" type="button"><span class="material-symbols-outlined text-xl">dark_mode</span></button><div class="flex items-center gap-3 pl-2"><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-1 ring-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUzNHUHNpcGzNK_BtIjcSx-_rXNKCkRQCpGcYAOuceXWS0B2fwc9ZUDX4H8BuzUo5YEjcDx6VDLYJDyalwM_ea1q8_2HrZvd1tKW8XbVD_9AB-xruPdvyc9k9nQuYYQb-IJshFiEY6wQJX5sS2dmReYuvVsIZU8CcsCHyYsnn9YeMgpCEMunOd9Z-rmN3fMQXhMv4LESQ3ibGVz5NOAly-9YXBmNxOsRCnvkT5bvoqS2_V5Uaj2gv7"/><div class="hidden lg:flex flex-col"><span class="font-label-md text-label-md text-on-surface leading-tight">Rian Pratama</span><span class="font-label-sm text-label-sm text-outline leading-tight">Equity Trader</span></div></div></div></header><main class="relative pt-16 bg-background flex-1 w-full"><div class="flex flex-col w-full">
+<!-- Sub-Header / Stock Overview Hero Bar -->
+<section class="w-full bg-surface-container-low px-6 py-4 flex flex-col gap-4 shadow-sm">
+<div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+<!-- Left: Ticker & Metadata -->
+<div class="flex flex-wrap items-center gap-4">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-xl bg-surface-container-highest flex items-center justify-center text-primary font-headline-lg text-headline-lg tracking-wider font-bold shadow-inner">
+            BCA
+          </div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-xl text-headline-xl text-on-surface tracking-tight">BBCA</span>
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-tertiary-container/20 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> LQ45 • IDX30
+              </span>
+<span class="px-2 py-0.5 rounded bg-primary-container/20 text-primary font-label-sm text-label-sm">
+                BSJP Match
+              </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">PT Bank Central Asia Tbk • Sektor Financials (Perbankan Buku IV)</p>
+</div>
+</div>
+<div class="hidden sm:block h-10 w-px bg-surface-container-highest"></div>
+<!-- Price Details -->
+<div class="flex items-baseline gap-3">
+<span class="font-data-mono-xl text-data-mono-xl text-on-surface tracking-tight">Rp 10.175</span>
+<div class="flex items-center gap-1 px-2 py-0.5 rounded bg-tertiary/10 text-tertiary font-data-mono-md text-data-mono-md font-semibold">
+<span class="material-symbols-outlined text-base">arrow_upward</span>
+<span>+125 (+1,24%)</span>
+</div>
+</div>
+</div>
+<!-- Right: Action Buttons -->
+<div class="flex items-center gap-2.5 flex-wrap">
+<button class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-amber-400 font-label-md text-label-md transition-all shadow-sm" id="watchlistBtn">
+<span class="material-symbols-outlined text-base" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-on-surface">Watchlist</span>
+</button>
+<button class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-all shadow-sm">
+<span class="material-symbols-outlined text-base text-secondary">add_circle</span>
+<span>+ Add to Portfolio</span>
+</button>
+<button class="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary-container hover:bg-primary-container/90 text-on-primary font-headline-md text-body-md font-semibold tracking-wide transition-all shadow-md">
+<span class="material-symbols-outlined text-lg">candlestick_chart</span>
+<span>Buka Order / Trade</span>
+</button>
+</div>
+</div>
+<!-- Live Trading Metric Pills -->
+<div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-2.5 pt-1">
+<div class="bg-surface-container px-3 py-2 rounded-lg flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-outline">RENTANG HARI INI</span>
+<div class="flex items-center justify-between font-data-mono-sm text-data-mono-sm">
+<span class="text-error font-medium">10.050</span>
+<span class="text-outline">━●━</span>
+<span class="text-tertiary font-medium">10.225</span>
+</div>
+</div>
+<div class="bg-surface-container px-3 py-2 rounded-lg flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-outline">VOLUME LOT (NILAI)</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface font-semibold truncate">74,2M Lembar <span class="text-outline-variant font-normal">| Rp 752,4B</span></span>
+</div>
+<div class="bg-surface-container px-3 py-2 rounded-lg flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-outline">FOREIGN NET FLOW (NFB)</span>
+<div class="flex items-center gap-1.5 font-data-mono-sm text-data-mono-sm text-tertiary font-bold">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span>+Rp 142,8 Miliar</span>
+</div>
+</div>
+<div class="bg-surface-container px-3 py-2 rounded-lg flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-outline">FREQ TRANSAKSI</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface font-semibold">18.492x <span class="text-tertiary text-xs">High</span></span>
+</div>
+<div class="bg-surface-container px-3 py-2 rounded-lg flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-outline">AVERAGE BUY / VWAP</span>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary font-medium">Rp 10.140</span>
+</div>
+<div class="bg-surface-container px-3 py-2 rounded-lg flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-outline">52-WEEK RANGE</span>
+<div class="flex items-center justify-between font-data-mono-sm text-data-mono-sm text-on-surface-variant">
+<span>8.800</span>
+<span class="text-outline">━━━━●</span>
+<span>10.400</span>
+</div>
+</div>
+</div>
+<!-- Corporate Action Alert Banner -->
+<div class="w-full bg-surface-container-high rounded-lg p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-sm">
+<div class="flex items-center gap-2.5">
+<span class="flex h-7 w-7 items-center justify-center rounded-md bg-secondary-container/20 text-secondary">
+<span class="material-symbols-outlined text-lg">campaign</span>
+</span>
+<div class="flex flex-wrap items-center gap-1.5 font-body-sm text-body-sm text-on-surface">
+<span class="font-semibold text-secondary">Corporate Action:</span>
+<span>Cum Dividend tunai final sebesar <strong class="text-on-surface font-semibold">Rp 270/saham</strong> jatuh tempo dalam</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-tertiary font-data-mono-sm text-data-mono-sm font-semibold">6 Hari (20 Mar 2025)</span>
+<span class="text-outline">• Yield Est: <strong class="text-tertiary">2,65%</strong></span>
+</div>
+</div>
+<a class="inline-flex items-center gap-1 text-primary hover:text-primary-fixed-dim font-label-md text-label-md" href="#">
+<span>Detail Pembagian Dividen</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</section>
+<!-- Main Multi-Tier Trading Workspace -->
+<div class="p-6 flex flex-col gap-6">
+<!-- Top Grid: Interactive Chart & Technical Indicators -->
+<div class="w-full bg-surface-container-low rounded-xl flex flex-col overflow-hidden shadow-sm">
+<!-- Chart Controls Bar -->
+<div class="px-5 py-3 bg-surface-container flex flex-wrap items-center justify-between gap-3">
+<!-- Timeframes -->
+<div class="flex items-center gap-1 bg-surface-container-lowest p-1 rounded-lg">
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm">1D</button>
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm">1W</button>
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm">1M</button>
+<button class="px-2.5 py-1 rounded bg-surface-container-high text-primary font-bold font-label-sm text-label-sm">3M</button>
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm">6M</button>
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm">1Y</button>
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm">5Y</button>
+</div>
+<!-- Chart Tools & Overlays -->
+<div class="flex items-center gap-2 flex-wrap">
+<div class="flex items-center gap-1 bg-surface-container-lowest p-1 rounded-lg">
+<button class="px-2 py-1 rounded bg-surface-container-high text-secondary flex items-center gap-1 font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-sm">candlestick_chart</span>
+<span>Candles</span>
+</button>
+<button class="px-2 py-1 rounded text-on-surface-variant hover:text-on-surface flex items-center gap-1 font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-sm">show_chart</span>
+<span>Line</span>
+</button>
+</div>
+<div class="h-5 w-px bg-surface-container-highest"></div>
+<!-- Active Technical Overlays Toggle -->
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm">
+<span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-secondary/15 text-secondary font-medium">
+<span class="w-2 h-0.5 bg-secondary rounded"></span> MA 20 (9.980)
+            </span>
+<span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-amber-400/15 text-amber-400 font-medium">
+<span class="w-2 h-0.5 bg-amber-400 rounded"></span> MA 50 (9.810)
+            </span>
+<span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary/10 text-primary-fixed-dim">
+<span class="w-2 h-0.5 bg-primary rounded"></span> Bollinger (±2σ)
+            </span>
+</div>
+<div class="h-5 w-px bg-surface-container-highest"></div>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<button class="p-1.5 rounded hover:bg-surface-container-high hover:text-on-surface transition-colors" title="Crosshair pointer">
+<span class="material-symbols-outlined text-lg">control_camera</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high hover:text-on-surface transition-colors" title="Drawing tools">
+<span class="material-symbols-outlined text-lg">draw</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high hover:text-on-surface transition-colors" title="Indicators selection">
+<span class="material-symbols-outlined text-lg">tune</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high hover:text-on-surface transition-colors" title="Fullscreen Chart">
+<span class="material-symbols-outlined text-lg">fullscreen</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Candlestick Visual Display Canvas (SVG Native Graphic) -->
+<div class="p-5 flex flex-col gap-2 bg-surface-container-lowest relative">
+<!-- Floating Active Inspection Bar -->
+<div class="flex items-center gap-4 text-outline font-data-mono-sm text-data-mono-sm flex-wrap">
+<span class="text-on-surface font-semibold">14 MAR 2025</span>
+<span>O: <span class="text-on-surface">10.075</span></span>
+<span>H: <span class="text-tertiary">10.225</span></span>
+<span>L: <span class="text-error">10.050</span></span>
+<span>C: <span class="text-tertiary">10.175</span></span>
+<span>CHG: <span class="text-tertiary">+125 (+1.24%)</span></span>
+<span>VOL: <span class="text-on-surface">742.850 Lot</span></span>
+</div>
+<!-- 30-Day Candlestick SVG Chart Area -->
+<div class="w-full h-80 relative flex flex-col justify-end">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 1000 320">
+<defs>
+<lineargradient id="volGradGreen" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#4ae176" stop-opacity="0.8"></stop>
+<stop offset="100%" stop-color="#4ae176" stop-opacity="0.1"></stop>
+</lineargradient>
+<lineargradient id="volGradRed" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#ffb4ab" stop-opacity="0.8"></stop>
+<stop offset="100%" stop-color="#ffb4ab" stop-opacity="0.1"></stop>
+</lineargradient>
+</defs>
+<!-- Horizontal Gridlines & Price Scales -->
+<line stroke="#182028" stroke-dasharray="3,3" stroke-width="1" x1="0" x2="940" y1="30" y2="30"></line>
+<text class="text-[11px] font-mono" fill="#8b909f" x="950" y="34">10.300</text>
+<line stroke="#182028" stroke-dasharray="3,3" stroke-width="1" x1="0" x2="940" y1="80" y2="80"></line>
+<text class="text-[11px] font-mono" fill="#8b909f" x="950" y="84">10.150</text>
+<line stroke="#182028" stroke-dasharray="3,3" stroke-width="1" x1="0" x2="940" y1="130" y2="130"></line>
+<text class="text-[11px] font-mono" fill="#8b909f" x="950" y="134">10.000</text>
+<line stroke="#182028" stroke-dasharray="3,3" stroke-width="1" x1="0" x2="940" y1="180" y2="180"></line>
+<text class="text-[11px] font-mono" fill="#8b909f" x="950" y="184">9.850</text>
+<line stroke="#182028" stroke-dasharray="3,3" stroke-width="1" x1="0" x2="940" y1="230" y2="230"></line>
+<text class="text-[11px] font-mono" fill="#8b909f" x="950" y="234">9.700</text>
+<!-- Bottom Volume Separator -->
+<line stroke="#222b33" stroke-width="1" x1="0" x2="1000" y1="245" y2="245"></line>
+<!-- Moving Averages Path (MA20 in Cyan, MA50 in Amber) -->
+<path d="M 20 188 Q 120 178, 240 160 T 480 120 T 720 85 T 920 62" fill="none" stroke="#5de6ff" stroke-linecap="round" stroke-width="2"></path>
+<path d="M 20 215 Q 160 205, 360 190 T 680 155 T 920 128" fill="none" stroke="#f59e0b" stroke-linecap="round" stroke-width="2"></path>
+<!-- 28 Sessions of Candlesticks & Volume Histogram -->
+<!-- 1: Red -->
+<line stroke="#ffb4ab" stroke-width="1.5" x1="30" x2="30" y1="180" y2="215"></line>
+<rect fill="#ffb4ab" height="20" rx="1" width="14" x="23" y="188"></rect>
+<rect fill="#ffb4ab" height="25" opacity="0.6" width="10" x="25" y="290"></rect>
+<!-- 2: Green -->
+<line stroke="#4ae176" stroke-width="1.5" x1="62" x2="62" y1="175" y2="208"></line>
+<rect fill="#4ae176" height="22" rx="1" width="14" x="55" y="180"></rect>
+<rect fill="#4ae176" height="35" opacity="0.6" width="10" x="57" y="280"></rect>
+<!-- 3: Green -->
+<line stroke="#4ae176" stroke-width="1.5" x1="94" x2="94" y1="165" y2="195"></line>
+<rect fill="#4ae176" height="18" rx="1" width="14" x="87" y="170"></rect>
+<rect fill="#4ae176" height="40" opacity="0.6" width="10" x="89" y="275"></rect>
+<!-- 4: Red -->
+<line stroke="#ffb4ab" stroke-width="1.5" x1="126" x2="126" y1="168" y2="200"></line>
+<rect fill="#ffb4ab" height="20" rx="1" width="14" x="119" y="172"></rect>
+<rect fill="#ffb4ab" height="20" opacity="0.6" width="10" x="121" y="295"></rect>
+<!-- 5: Red -->
+<line stroke="#ffb4ab" stroke-width="1.5" x1="158" x2="158" y1="175" y2="210"></line>
+<rect fill="#ffb4ab" height="19" rx="1" width="14" x="151" y="182"></rect>
+<rect fill="#ffb4ab" height="27" opacity="0.6" width="10" x="153" y="288"></rect>
+<!-- 6: Green -->
+<line stroke="#4ae176" stroke-width="1.5" x1="190" x2="190" y1="160" y2="190"></line>
+<rect fill="#4ae176" height="22" rx="1" width="14" x="183" y="165"></rect>
+<rect fill="#4ae176" height="45" opacity="0.6" width="10" x="185" y="270"></rect>
+<!-- 7: Green Gap Up -->
+<line stroke="#4ae176" stroke-width="1.5" x1="222" x2="222" y1="145" y2="175"></line>
+<rect fill="#4ae176" height="20" rx="1" width="14" x="215" y="148"></rect>
+<rect fill="#4ae176" height="55" opacity="0.6" width="10" x="217" y="260"></rect>
+<!-- 8: Red Pinbar -->
+<line stroke="#ffb4ab" stroke-width="1.5" x1="254" x2="254" y1="135" y2="170"></line>
+<rect fill="#ffb4ab" height="15" rx="1" width="14" x="247" y="146"></rect>
+<rect fill="#ffb4ab" height="30" opacity="0.6" width="10" x="249" y="285"></rect>
+<!-- 9: Green -->
+<line stroke="#4ae176" stroke-width="1.5" x1="286" x2="286" y1="130" y2="160"></line>
+<rect fill="#4ae176" height="20" rx="1" width="14" x="279" y="135"></rect>
+<rect fill="#4ae176" height="50" opacity="0.6" width="10" x="281" y="265"></rect>
+<!-- 10: Green -->
+<line stroke="#4ae176" stroke-width="1.5" x1="318" x2="318" y1="120" y2="150"></line>
+<rect fill="#4ae176" height="18" rx="1" width="14" x="311" y="125"></rect>
+<rect fill="#4ae176" height="55" opacity="0.6" width="10" x="313" y="260"></rect>
+<!-- 11: Red -->
+<line stroke="#ffb4ab" stroke-width="1.5" x1="350" x2="350" y1="122" y2="155"></line>
+<rect fill="#ffb4ab" height="16" rx="1" width="14" x="343" y="130"></rect>
+<rect fill="#ffb4ab" height="23" opacity="0.6" width="10" x="345" y="292"></rect>
+<!-- 12: Green -->
+<line stroke="#4ae176" stroke-width="1.5" x1="382" x2="382" y1="112" y2="142"></line>
+<rect fill="#4ae176" height="20" rx="1" width="14" x="375" y="118"></rect>
+<rect fill="#4ae176" height="43" opacity="0.6" width="10" x="377" y="272"></rect>
+<!-- 13: Red Doji -->
+<line stroke="#ffb4ab" stroke-width="1.5" x1="414" x2="414" y1="105" y2="138"></line>
+<rect fill="#ffb4ab" height="5" rx="1" width="14" x="407" y="120"></rect>
+<rect fill="#ffb4ab" height="17" opacity="0.6" width="10" x="409" y="298"></rect>
+<!-- 14: Green Breakout -->
+<line stroke="#4ae176" stroke-width="1.5" x1="446" x2="446" y1="95" y2="128"></line>
+<rect fill="#4ae176" height="24" rx="1" width="14" x="439" y="100"></rect>
+<rect fill="#4ae176" height="60" opacity="0.6" width="10" x="441" y="255"></rect>
+<!-- 15: Green -->
+<line stroke="#4ae176" stroke-width="1.5" x1="478" x2="478" y1="88" y2="118"></line>
+<rect fill="#4ae176" height="20" rx="1" width="14" x="471" y="92"></rect>
+<rect fill="#4ae176" height="63" opacity="0.6" width="10" x="473" y="252"></rect>
+<!-- 16: Red -->
+<line stroke="#ffb4ab" stroke-width="1.5" x1="510" x2="510" y1="90" y2="125"></line>
+<rect fill="#ffb4ab" height="21" rx="1" width="14" x="503" y="96"></rect>
+<rect fill="#ffb4ab" height="30" opacity="0.6" width="10" x="505" y="285"></rect>
+<!-- 17: Red Correction -->
+<line stroke="#ffb4ab" stroke-width="1.5" x1="542" x2="542" y1="100" y2="136"></line>
+<rect fill="#ffb4ab" height="22" rx="1" width="14" x="535" y="108"></rect>
+<rect fill="#ffb4ab" height="35" opacity="0.6" width="10" x="537" y="280"></rect>
+<!-- 18: Green Rebound -->
+<line stroke="#4ae176" stroke-width="1.5" x1="574" x2="574" y1="95" y2="125"></line>
+<rect fill="#4ae176" height="19" rx="1" width="14" x="567" y="100"></rect>
+<rect fill="#4ae176" height="45" opacity="0.6" width="10" x="569" y="270"></rect>
+<!-- 19: Green -->
+<line stroke="#4ae176" stroke-width="1.5" x1="606" x2="606" y1="82" y2="112"></line>
+<rect fill="#4ae176" height="22" rx="1" width="14" x="599" y="86"></rect>
+<rect fill="#4ae176" height="55" opacity="0.6" width="10" x="601" y="260"></rect>
+<!-- 20: Green -->
+<line stroke="#4ae176" stroke-width="1.5" x1="638" x2="638" y1="74" y2="102"></line>
+<rect fill="#4ae176" height="19" rx="1" width="14" x="631" y="78"></rect>
+<rect fill="#4ae176" height="57" opacity="0.6" width="10" x="633" y="258"></rect>
+<!-- 21: Red Small -->
+<line stroke="#ffb4ab" stroke-width="1.5" x1="670" x2="670" y1="75" y2="106"></line>
+<rect fill="#ffb4ab" height="15" rx="1" width="14" x="663" y="82"></rect>
+<rect fill="#ffb4ab" height="23" opacity="0.6" width="10" x="665" y="292"></rect>
+<!-- 22: Green -->
+<line stroke="#4ae176" stroke-width="1.5" x1="702" x2="702" y1="68" y2="98"></line>
+<rect fill="#4ae176" height="21" rx="1" width="14" x="695" y="72"></rect>
+<rect fill="#4ae176" height="50" opacity="0.6" width="10" x="697" y="265"></rect>
+<!-- 23: Red Profit Taking -->
+<line stroke="#ffb4ab" stroke-width="1.5" x1="734" x2="734" y1="65" y2="100"></line>
+<rect fill="#ffb4ab" height="20" rx="1" width="14" x="727" y="72"></rect>
+<rect fill="#ffb4ab" height="37" opacity="0.6" width="10" x="729" y="278"></rect>
+<!-- 24: Green -->
+<line stroke="#4ae176" stroke-width="1.5" x1="766" x2="766" y1="60" y2="90"></line>
+<rect fill="#4ae176" height="22" rx="1" width="14" x="759" y="64"></rect>
+<rect fill="#4ae176" height="55" opacity="0.6" width="10" x="761" y="260"></rect>
+<!-- 25: Green -->
+<line stroke="#4ae176" stroke-width="1.5" x1="798" x2="798" y1="52" y2="82"></line>
+<rect fill="#4ae176" height="21" rx="1" width="14" x="791" y="56"></rect>
+<rect fill="#4ae176" height="60" opacity="0.6" width="10" x="793" y="255"></rect>
+<!-- 26: Red Consolidation -->
+<line stroke="#ffb4ab" stroke-width="1.5" x1="830" x2="830" y1="50" y2="84"></line>
+<rect fill="#ffb4ab" height="18" rx="1" width="14" x="823" y="57"></rect>
+<rect fill="#ffb4ab" height="30" opacity="0.6" width="10" x="825" y="285"></rect>
+<!-- 27: Green -->
+<line stroke="#4ae176" stroke-width="1.5" x1="862" x2="862" y1="45" y2="76"></line>
+<rect fill="#4ae176" height="22" rx="1" width="14" x="855" y="49"></rect>
+<rect fill="#4ae176" height="67" opacity="0.6" width="10" x="857" y="248"></rect>
+<!-- 28 (TODAY): Strong Green Marubozu w/ High Foreign Accumulation -->
+<line stroke="#4ae176" stroke-width="2.5" x1="894" x2="894" y1="35" y2="68"></line>
+<rect fill="#4ae176" height="26" rx="1.5" width="16" x="886" y="38"></rect>
+<rect fill="#4ae176" height="75" opacity="0.9" width="12" x="888" y="240"></rect>
+<!-- Current Price Marker Label -->
+<g transform="translate(908, 48)">
+<polygon fill="#4ae176" points="0,0 8,-5 50,-5 50,5 8,5"></polygon>
+<text class="text-[10px] font-bold font-mono" fill="#003915" x="12" y="3">10.175</text>
+</g>
+</svg>
+</div>
+</div>
+<!-- Collapsible Technical Indicators Panel Sub-Pane -->
+<div class="px-5 py-3 bg-surface-container border-t-0 flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-on-surface font-semibold uppercase tracking-wider">Sub-Pane Oscillators</span>
+<span class="px-2 py-0.5 rounded-full bg-tertiary/15 text-tertiary font-label-sm text-label-sm">Bullish Alignment</span>
+</div>
+<button class="text-xs text-outline hover:text-on-surface flex items-center gap-1 font-label-sm text-label-sm" id="toggleOscillators">
+<span>Minimize</span>
+<span class="material-symbols-outlined text-base">expand_less</span>
+</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3" id="oscillatorsGrid">
+<!-- MACD Indicator Card -->
+<div class="bg-surface-container-low p-3 rounded-lg flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface font-medium">MACD (12, 26, 9)</span>
+<span class="px-1.5 py-0.5 rounded bg-tertiary-container/20 text-tertiary font-label-sm text-label-sm font-bold">GOLDEN CROSS</span>
+</div>
+<div class="flex items-center justify-between font-data-mono-sm text-data-mono-sm">
+<span class="text-secondary">MACD: +48.6</span>
+<span class="text-amber-400">Signal: +34.4</span>
+<span class="text-tertiary font-semibold">Hist: +14.2 ▲</span>
+</div>
+<!-- Mini SVG MACD Sparkline -->
+<div class="h-10 w-full flex items-end">
+<svg class="w-full h-full" viewbox="0 0 160 30">
+<!-- Zero Line -->
+<line stroke="#2d363e" stroke-width="1" x1="0" x2="160" y1="15" y2="15"></line>
+<!-- Histograms -->
+<rect fill="#ffb4ab" height="6" opacity="0.6" width="6" x="10" y="16"></rect>
+<rect fill="#ffb4ab" height="4" opacity="0.6" width="6" x="25" y="15"></rect>
+<rect fill="#4ae176" height="2" opacity="0.7" width="6" x="40" y="13"></rect>
+<rect fill="#4ae176" height="5" opacity="0.7" width="6" x="55" y="10"></rect>
+<rect fill="#4ae176" height="8" opacity="0.7" width="6" x="70" y="7"></rect>
+<rect fill="#4ae176" height="10" opacity="0.7" width="6" x="85" y="5"></rect>
+<rect fill="#4ae176" height="7" opacity="0.7" width="6" x="100" y="8"></rect>
+<rect fill="#4ae176" height="11" opacity="0.8" width="6" x="115" y="4"></rect>
+<rect fill="#4ae176" height="13" opacity="0.9" width="6" x="130" y="2"></rect>
+<rect fill="#4ae176" height="14" width="6" x="145" y="1"></rect>
+<!-- MACD Line (Cyan) & Signal Line (Amber) -->
+<path d="M 0 20 Q 50 16, 90 9 T 160 3" fill="none" stroke="#5de6ff" stroke-width="1.5"></path>
+<path d="M 0 21 Q 60 19, 100 13 T 160 8" fill="none" stroke="#f59e0b" stroke-width="1.5"></path>
+</svg>
+</div>
+</div>
+<!-- RSI Indicator Card -->
+<div class="bg-surface-container-low p-3 rounded-lg flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface font-medium">RSI 14 Periods</span>
+<span class="text-tertiary font-data-mono-md text-data-mono-md font-bold">62,4</span>
+</div>
+<div class="flex items-center justify-between text-outline font-label-sm text-label-sm">
+<span>Oversold: 30</span>
+<span class="text-tertiary font-medium">Healthy Momentum</span>
+<span>Overbought: 70</span>
+</div>
+<!-- Progress Track Bar with Marker -->
+<div class="relative w-full h-3 bg-surface-container-high rounded-full overflow-hidden flex items-center">
+<div class="absolute left-[30%] right-[30%] h-full bg-surface-variant"></div>
+<!-- 62.4% Position Indicator -->
+<div class="h-full bg-gradient-to-r from-primary via-secondary to-tertiary rounded-full" style="width: 62.4%;"></div>
+</div>
+<div class="flex justify-between text-outline font-data-mono-sm text-data-mono-sm">
+<span>0</span>
+<span class="text-on-surface font-semibold">62.4 (Room to run)</span>
+<span>100</span>
+</div>
+</div>
+<!-- Stochastic Oscillator Card -->
+<div class="bg-surface-container-low p-3 rounded-lg flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface font-medium">Stochastic (14, 3, 3)</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-secondary font-label-sm text-label-sm font-semibold">Upward Divergence</span>
+</div>
+<div class="flex items-center justify-between font-data-mono-sm text-data-mono-sm">
+<span class="text-secondary">%K: <strong class="text-on-surface">68,1</strong></span>
+<span class="text-amber-400">%D: <strong class="text-on-surface">61,5</strong></span>
+<span class="text-tertiary font-medium">Spread: +6,6</span>
+</div>
+<!-- Stochastic Visualization Spark -->
+<div class="h-10 w-full flex items-center">
+<svg class="w-full h-full" viewbox="0 0 160 26">
+<line stroke="#2d363e" stroke-dasharray="2,2" stroke-width="1" x1="0" x2="160" y1="5" y2="5"></line>
+<line stroke="#2d363e" stroke-dasharray="2,2" stroke-width="1" x1="0" x2="160" y1="21" y2="21"></line>
+<!-- %K Blue Line, %D Amber Line -->
+<path d="M 5 22 Q 40 18, 75 14 T 120 9 T 155 6" fill="none" stroke="#5de6ff" stroke-width="1.8"></path>
+<path d="M 5 24 Q 45 20, 80 18 T 125 14 T 155 10" fill="none" stroke="#f59e0b" stroke-width="1.5"></path>
+</svg>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Split Grid: Broker Summary / Flow (IDX Pro Core) vs Key Stats & News Intelligence -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left 7 Cols: Broker Flow / Foreign Accumulation Engine -->
+<div class="lg:col-span-7 flex flex-col gap-4">
+<div class="bg-surface-container-low p-5 rounded-xl flex flex-col gap-4 shadow-sm">
+<!-- Section Title & Filter Options -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-xl">swap_horiz</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Broker Summary &amp; Arus Dana Asing</h2>
+</div>
+<!-- Range Selector Pills -->
+<div class="flex items-center gap-1 bg-surface-container p-1 rounded-lg">
+<button class="px-2.5 py-1 rounded bg-surface-container-high text-primary font-bold font-label-sm text-label-sm">1D (Today)</button>
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm">5D</button>
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm">10D</button>
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm">Custom</button>
+</div>
+</div>
+<!-- Big Accumulation Callout Verdict Card -->
+<div class="bg-surface-container p-3.5 rounded-lg flex items-start gap-3 border-l-4 border-l-tertiary">
+<div class="h-9 w-9 rounded-lg bg-tertiary-container/25 flex items-center justify-center text-tertiary shrink-0">
+<span class="material-symbols-outlined text-xl">account_balance</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-tertiary font-bold tracking-wider">BIG ACCUMULATION VERDICT</span>
+<span class="px-1.5 py-0.2 rounded bg-tertiary text-surface font-label-sm text-label-sm font-extrabold">A++</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface">
+                Top 3 Net Buy terkonsolidasi masif: <strong class="text-tertiary font-data-mono-sm text-data-mono-sm">+Rp 184,2 Miliar</strong> didorong akumulasi institusi asing utama (<span class="font-semibold text-primary">AK - UBS Sekuritas</span>, <span class="font-semibold text-primary">BK - J.P. Morgan</span>, <span class="font-semibold text-primary">CS - Credit Suisse</span>) dengan harga rata-rata beli di Rp 10.140.
+              </p>
+</div>
+</div>
+<!-- Split Top Buyer vs Top Seller Dense Tables -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+<!-- Top Buyer Table -->
+<div class="bg-surface-container rounded-lg p-3 flex flex-col gap-2">
+<div class="flex items-center justify-between pb-1">
+<span class="font-label-md text-label-md text-tertiary font-semibold flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span> TOP BUYERS (ASING &amp; DOMESTIK)
+                </span>
+<span class="font-label-sm text-label-sm text-outline">NET BUY VAL</span>
+</div>
+<div class="flex flex-col gap-1.5">
+<!-- Row 1: AK -->
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded bg-primary-container/20 text-primary font-data-mono-sm text-data-mono-sm font-bold">AK</span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface">UBS Sekuritas (F)</span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Avg: Rp 10.138</span>
+</div>
+</div>
+<div class="flex flex-col items-end font-data-mono-sm text-data-mono-sm">
+<span class="text-tertiary font-bold">+Rp 94,5B</span>
+<span class="text-outline">93.200 Lot</span>
+</div>
+</div>
+<!-- Row 2: BK -->
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded bg-primary-container/20 text-primary font-data-mono-sm text-data-mono-sm font-bold">BK</span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface">J.P. Morgan (F)</span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Avg: Rp 10.145</span>
+</div>
+</div>
+<div class="flex flex-col items-end font-data-mono-sm text-data-mono-sm">
+<span class="text-tertiary font-bold">+Rp 58,2B</span>
+<span class="text-outline">57.400 Lot</span>
+</div>
+</div>
+<!-- Row 3: ZP -->
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded bg-surface-variant text-on-surface font-data-mono-sm text-data-mono-sm font-bold">ZP</span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface">Maybank Sekuritas</span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Avg: Rp 10.142</span>
+</div>
+</div>
+<div class="flex flex-col items-end font-data-mono-sm text-data-mono-sm">
+<span class="text-tertiary font-bold">+Rp 31,5B</span>
+<span class="text-outline">31.050 Lot</span>
+</div>
+</div>
+<!-- Row 4: RX -->
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded bg-primary-container/20 text-primary font-data-mono-sm text-data-mono-sm font-bold">RX</span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface">Macquarie (F)</span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Avg: Rp 10.150</span>
+</div>
+</div>
+<div class="flex flex-col items-end font-data-mono-sm text-data-mono-sm">
+<span class="text-tertiary font-bold">+Rp 22,1B</span>
+<span class="text-outline">21.750 Lot</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Top Seller Table -->
+<div class="bg-surface-container rounded-lg p-3 flex flex-col gap-2">
+<div class="flex items-center justify-between pb-1">
+<span class="font-label-md text-label-md text-error font-semibold flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-error"></span> TOP SELLERS (DISTRIBUSI RITEL)
+                </span>
+<span class="font-label-sm text-label-sm text-outline">NET SELL VAL</span>
+</div>
+<div class="flex flex-col gap-1.5">
+<!-- Row 1: YP -->
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded bg-surface-variant text-on-surface font-data-mono-sm text-data-mono-sm font-bold">YP</span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface">Mirae Asset (D)</span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Avg: Rp 10.165</span>
+</div>
+</div>
+<div class="flex flex-col items-end font-data-mono-sm text-data-mono-sm">
+<span class="text-error font-bold">-Rp 64,2B</span>
+<span class="text-outline">63.150 Lot</span>
+</div>
+</div>
+<!-- Row 2: CC -->
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded bg-surface-variant text-on-surface font-data-mono-sm text-data-mono-sm font-bold">CC</span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface">Mandiri Sekuritas (D)</span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Avg: Rp 10.160</span>
+</div>
+</div>
+<div class="flex flex-col items-end font-data-mono-sm text-data-mono-sm">
+<span class="text-error font-bold">-Rp 52,1B</span>
+<span class="text-outline">51.280 Lot</span>
+</div>
+</div>
+<!-- Row 3: PD -->
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded bg-surface-variant text-on-surface font-data-mono-sm text-data-mono-sm font-bold">PD</span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface">Indo Premier (D)</span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Avg: Rp 10.170</span>
+</div>
+</div>
+<div class="flex flex-col items-end font-data-mono-sm text-data-mono-sm">
+<span class="text-error font-bold">-Rp 38,7B</span>
+<span class="text-outline">38.050 Lot</span>
+</div>
+</div>
+<!-- Row 4: XC -->
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 rounded bg-surface-variant text-on-surface font-data-mono-sm text-data-mono-sm font-bold">XC</span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface">Ajaib Sekuritas (D)</span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Avg: Rp 10.172</span>
+</div>
+</div>
+<div class="flex flex-col items-end font-data-mono-sm text-data-mono-sm">
+<span class="text-error font-bold">-Rp 29,2B</span>
+<span class="text-outline">28.700 Lot</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Cumulative Net Foreign Flow 10-Day Trendline Visual -->
+<div class="bg-surface-container p-3 rounded-lg flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface font-medium">Kumulatif Net Foreign Inflow (10 Hari Terakhir)</span>
+<span class="text-tertiary font-data-mono-sm text-data-mono-sm font-bold">+Rp 1.482,5 Miliar</span>
+</div>
+<div class="h-20 w-full relative">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 500 80">
+<defs>
+<lineargradient id="foreignInflowGrad" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#4ae176" stop-opacity="0.35"></stop>
+<stop offset="100%" stop-color="#4ae176" stop-opacity="0.0"></stop>
+</lineargradient>
+</defs>
+<path d="M 0 65 Q 60 60, 110 52 T 220 40 T 320 28 T 420 18 L 500 8 L 500 80 L 0 80 Z" fill="url(#foreignInflowGrad)"></path>
+<path d="M 0 65 Q 60 60, 110 52 T 220 40 T 320 28 T 420 18 L 500 8" fill="none" stroke="#4ae176" stroke-linecap="round" stroke-width="2.5"></path>
+<!-- Dots on Data Points -->
+<circle cx="110" cy="52" fill="#4ae176" r="3.5"></circle>
+<circle cx="220" cy="40" fill="#4ae176" r="3.5"></circle>
+<circle cx="320" cy="28" fill="#4ae176" r="3.5"></circle>
+<circle cx="420" cy="18" fill="#4ae176" r="3.5"></circle>
+<circle cx="500" cy="8" fill="#5de6ff" r="4.5"></circle>
+</svg>
+</div>
+<div class="flex items-center justify-between text-outline font-data-mono-sm text-data-mono-sm pt-1">
+<span>03 Mar</span>
+<span>06 Mar</span>
+<span>10 Mar</span>
+<span>12 Mar</span>
+<span class="text-tertiary font-semibold">14 Mar (Hari ini)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right 5 Cols: Valuation Statistics & AI News Sentiment -->
+<div class="lg:col-span-5 flex flex-col gap-4">
+<!-- Card: Key Financial & Valuation Metrics -->
+<div class="bg-surface-container-low p-5 rounded-xl flex flex-col gap-3 shadow-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-xl">analytics</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Valuasi &amp; Fundamental</h3>
+</div>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container text-on-surface-variant">FY2024 Audited</span>
+</div>
+<!-- 2-Column Metrics Matrix -->
+<div class="grid grid-cols-2 gap-2.5">
+<div class="p-2.5 rounded-lg bg-surface-container flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-outline">MARKET CAPITALIZATION</span>
+<span class="font-data-mono-md text-data-mono-md text-on-surface font-semibold">Rp 1.254,3 Triliun</span>
+<span class="font-label-sm text-label-sm text-tertiary">#1 Terbesar di BEI</span>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-outline">P/E RATIO (TTM)</span>
+<span class="font-data-mono-md text-data-mono-md text-on-surface font-semibold">24,20x</span>
+<span class="font-label-sm text-label-sm text-outline">Sektor Avg: 16.8x</span>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-outline">PBV RATIO</span>
+<span class="font-data-mono-md text-data-mono-md text-on-surface font-semibold">4,82x</span>
+<span class="font-label-sm text-label-sm text-outline">Book Val: Rp 2.110</span>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-outline">RETURN ON EQUITY (ROE)</span>
+<span class="font-data-mono-md text-data-mono-md text-tertiary font-semibold">22,40%</span>
+<span class="font-label-sm text-label-sm text-tertiary font-medium">Top Tier Profitability</span>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-outline">DIVIDEND YIELD</span>
+<span class="font-data-mono-md text-data-mono-md text-secondary font-semibold">2,80%</span>
+<span class="font-label-sm text-label-sm text-outline">Payout: 62% Laba</span>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-outline">EPS (EARNING PER SHARE)</span>
+<span class="font-data-mono-md text-data-mono-md text-on-surface font-semibold">Rp 420,45</span>
+<span class="font-label-sm text-label-sm text-tertiary">+12.8% YoY</span>
+</div>
+</div>
+<!-- Quick Peer Comparison Micro-Bar -->
+<div class="bg-surface-container p-2.5 rounded-lg flex flex-col gap-1.5">
+<span class="font-label-sm text-label-sm text-outline">KOMPARASI ROE BIG BANKS</span>
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between font-label-sm text-label-sm">
+<span class="text-on-surface font-semibold">BBCA</span>
+<div class="w-3/5 bg-surface-container-lowest h-2 rounded-full overflow-hidden">
+<div class="bg-tertiary h-full rounded-full" style="width: 88%;"></div>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-tertiary">22,4%</span>
+</div>
+<div class="flex items-center justify-between font-label-sm text-label-sm">
+<span class="text-on-surface-variant">BBRI</span>
+<div class="w-3/5 bg-surface-container-lowest h-2 rounded-full overflow-hidden">
+<div class="bg-primary/60 h-full rounded-full" style="width: 76%;"></div>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">19,1%</span>
+</div>
+<div class="flex items-center justify-between font-label-sm text-label-sm">
+<span class="text-on-surface-variant">BMRI</span>
+<div class="w-3/5 bg-surface-container-lowest h-2 rounded-full overflow-hidden">
+<div class="bg-primary/60 h-full rounded-full" style="width: 79%;"></div>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">20,2%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Card: AI Real-Time Sentiment & Catalysts -->
+<div class="bg-surface-container-low p-5 rounded-xl flex flex-col gap-3 shadow-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-xl">psychology</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Claude FinAI News Intelligence</h3>
+</div>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-primary-container/20 text-primary">Live NLP Feed</span>
+</div>
+<div class="flex flex-col gap-3">
+<!-- News Item 1: High Bullish -->
+<article class="bg-surface-container p-3 rounded-lg flex flex-col gap-1.5 hover:bg-surface-container-high transition-colors">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="h-2 w-2 rounded-full bg-tertiary ring-2 ring-tertiary/20"></span>
+<span class="font-label-sm text-label-sm text-tertiary font-bold uppercase tracking-wide">Bullish Fundamental</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Bisnis.com • 2 jam lalu</span>
+</div>
+<h4 class="font-body-md text-body-md font-semibold text-on-surface leading-snug">
+                Laba Bersih BCA Tumbuh 12,8% YoY Ditopang Pertumbuhan Kredit Korporasi dan CASA Kuat
+              </h4>
+<div class="bg-surface-container-low p-2 rounded text-outline font-body-sm text-body-sm">
+<strong class="text-secondary font-semibold">AI Summary:</strong> BCA membukukan margin bunga bersih (NIM) 5.6% dengan rasio NPL terjaga prima di 1.8%, memperkuat katalis fundamental kuartal I-2025.
+              </div>
+</article>
+<!-- News Item 2: Strong Flow Catalyst -->
+<article class="bg-surface-container p-3 rounded-lg flex flex-col gap-1.5 hover:bg-surface-container-high transition-colors">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="h-2 w-2 rounded-full bg-tertiary ring-2 ring-tertiary/20"></span>
+<span class="font-label-sm text-label-sm text-tertiary font-bold uppercase tracking-wide">Institutional Flow</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Kontan • 4 jam lalu</span>
+</div>
+<h4 class="font-body-md text-body-md font-semibold text-on-surface leading-snug">
+                Investor Asing Catat Net Buy Rp 142 Miliar di Saham BBCA Sesi II Hari Ini
+              </h4>
+<div class="bg-surface-container-low p-2 rounded text-outline font-body-sm text-body-sm">
+<strong class="text-secondary font-semibold">AI Summary:</strong> Akumulasi dominan oleh broker asing institusi AK dan BK menjelang tanggal cum-date dividen Rp 270/lembar.
+              </div>
+</article>
+<!-- News Item 3: Neutral Macro Context -->
+<article class="bg-surface-container p-3 rounded-lg flex flex-col gap-1.5 hover:bg-surface-container-high transition-colors">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="h-2 w-2 rounded-full bg-amber-400"></span>
+<span class="font-label-sm text-label-sm text-amber-400 font-bold uppercase tracking-wide">Macro / Neutral</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">CNBC Indonesia • 6 jam lalu</span>
+</div>
+<h4 class="font-body-md text-body-md font-semibold text-on-surface leading-snug">
+                BI Pertahankan Suku Bunga Acuan di 6.00%, Likuiditas Perbankan Tetap Longgar
+              </h4>
+<div class="bg-surface-container-low p-2 rounded text-outline font-body-sm text-body-sm">
+<strong class="text-secondary font-semibold">AI Summary:</strong> Kebijakan moneter stabil menopang pertumbuhan kredit industri perbankan nasional tanpa tekanan kenaikan Cost of Funds (CoF).
+              </div>
+</article>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Collapsible toggle for Technical Indicator sub-pane
+  const toggleBtn = document.getElementById('toggleOscillators');
+  const oscGrid = document.getElementById('oscillatorsGrid');
+  if (toggleBtn && oscGrid) {
+    toggleBtn.addEventListener('click', () => {
+      const isHidden = oscGrid.classList.toggle('hidden');
+      toggleBtn.innerHTML = isHidden 
+        ? '<span>Expand</span><span class="material-symbols-outlined text-base">expand_more</span>'
+        : '<span>Minimize</span><span class="material-symbols-outlined text-base">expand_less</span>';
+    });
+  }
+
+  // Interactive toggle for Watchlist Button state
+  const watchlistBtn = document.getElementById('watchlistBtn');
+  if (watchlistBtn) {
+    watchlistBtn.addEventListener('click', () => {
+      const icon = watchlistBtn.querySelector('.material-symbols-outlined');
+      if (icon) {
+        const isFilled = icon.style.fontVariationSettings.includes("'FILL' 1");
+        icon.style.fontVariationSettings = isFilled ? "'FILL' 0" : "'FILL' 1";
+      }
+    });
+  }
+</script></main></div></body></html>

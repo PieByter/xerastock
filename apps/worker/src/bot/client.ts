@@ -22,6 +22,10 @@ export const client = new Client({
 export async function deployCommands(
     commands: (SlashCommandBuilder | SlashCommandOptionsOnlyBuilder)[],
 ) {
+    if (!env.DISCORD_BOT_TOKEN || !env.DISCORD_CLIENT_ID) {
+        logger.warn("DISCORD_BOT_TOKEN atau DISCORD_CLIENT_ID belum di-set, melewati deploy commands");
+        return;
+    }
     const rest = new REST({ version: "10" }).setToken(env.DISCORD_BOT_TOKEN);
     const body = commands.map((c) => c.toJSON());
 
@@ -41,6 +45,11 @@ export async function deployCommands(
 }
 
 export async function startBot() {
+    if (!env.DISCORD_BOT_TOKEN) {
+        logger.warn("DISCORD_BOT_TOKEN tidak tersedia. Bot client dinonaktifkan (mode Webhook/Mock)");
+        return;
+    }
+
     client.once("ready", () => {
         logger.info(`bot online sebagai ${client.user?.tag}`);
     });
