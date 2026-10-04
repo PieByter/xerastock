@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Git: generate commit otomatis (dry-run)",
+      "type": "shell",
+      "command": "node scripts/auto-commit.mjs",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "group": "none",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "Git: buat commit otomatis (apply)",
+      "type": "shell",
+      "command": "node scripts/auto-commit.mjs --apply",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "group": "none",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "Git: generate commit otomatis (JSON)",
+      "type": "shell",
+      "command": "node scripts/auto-commit.mjs --json",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "group": "none",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    }
+  ]
+}
