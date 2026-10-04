@@ -1,6 +1,7 @@
 /**
  * Scheduler — job terjadwal (node-cron).
  * - EOD pipeline: 16:00 WIB (setelah bursa tutup 15:30)
+ * - Broker summary sync: 16:30 WIB (setelah harga EOD tersimpan)
  * - Quote refresh: tiap 5 menit saat jam bursa
  * - Outbox notifikasi: tiap 30 detik
  * - Healthcheck: tiap 5 menit
@@ -10,6 +11,7 @@ import cron from "node-cron";
 import { prisma } from "@stock-analyst/db";
 import { DEFAULT_WATCHLIST_TICKERS } from "@stock-analyst/shared";
 import { syncHistoryToDb } from "../services/marketData";
+import { runBrokerSyncPipeline } from "../services/brokerData";
 import { evaluateStrategyForStock } from "../services/signalEngine";
 import { processOutbox } from "../bot/notifier";
 import { env } from "../config";
@@ -131,9 +133,18 @@ async function runQuoteRefresh() {
     await processOutbox(prisma);
 }
 
+/** Sinkronisasi broker summary & foreign flow untuk semua saham aktif. */
+async function runBrokerSync() {
+    const stocks = await getActiveStocks();
+    await runBrokerSyncPipeline(prisma, stocks);
+}
+
 export function startScheduler() {
     // EOD: 16:00 WIB setiap hari kerja
     cron.schedule("0 16 * * 1-5", runEodPipeline, { timezone: env.BOT_TIMEZONE });
+
+    // Broker summary: 16:30 WIB setiap hari kerja (setelah harga EOD tersimpan)
+    cron.schedule("30 16 * * 1-5", runBrokerSync, { timezone: env.BOT_TIMEZONE });
 
     // Quote refresh: tiap 5 menit saat jam bursa (09:00–15:30 WIB, Senin–Jumat)
     cron.schedule("*/5 9-15 * * 1-5", runQuoteRefresh, { timezone: env.BOT_TIMEZONE });
@@ -146,5 +157,5 @@ export function startScheduler() {
         logger.info("healthcheck OK");
     });
 
-    logger.info("scheduler dimulai (EOD 16:00 WIB, quote refresh 5 menit)");
+    logger.info("scheduler dimulai (EOD 16:00 WIB, broker sync 16:30 WIB, quote refresh 5 menit)");
 }

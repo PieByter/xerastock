@@ -5,6 +5,7 @@
  */
 
 import yahooFinance from "yahoo-finance2";
+import { env } from "../config";
 import { logger } from "../logger";
 
 export interface ProviderBar {
@@ -66,11 +67,135 @@ class YahooProvider implements MarketDataProvider {
     }
 }
 
-// TODO: implementasi TwelveDataProvider sebagai fallback (butuh API key).
-// class TwelveDataProvider implements MarketDataProvider { ... }
+/** Twelve Data memakai format simbol berbeda untuk bursa Indonesia (BBCA.JK → BBCA:IDX). */
+export function toTwelveDataSymbol(ticker: string): string {
+    const upper = ticker.toUpperCase();
+    return upper.endsWith(".JK") ? `${upper.slice(0, -3)}:IDX` : upper;
+}
+
+interface TwelveDataTimeSeriesResponse {
+    status?: string;
+    message?: string;
+    values?: Array<{
+        datetime: string;
+        open: string;
+        high: string;
+        low: string;
+        close: string;
+        volume?: string;
+    }>;
+}
+
+interface TwelveDataQuoteResponse {
+    status?: string;
+    message?: string;
+    close?: string;
+    previous_close?: string;
+    volume?: string;
+}
+
+/** Fallback provider berbayar (PRD 10.3) — aktif hanya bila TWELVE_DATA_API_KEY di-set. */
+class TwelveDataProvider implements MarketDataProvider {
+    name = "twelvedata";
+
+    constructor(private readonly apiKey: string, private readonly baseUrl = "https://api.twelvedata.com") { }
+
+    async getHistory(ticker: string, days: number): Promise<ProviderBar[]> {
+        const url = new URL(`${this.baseUrl}/time_series`);
+        url.searchParams.set("symbol", toTwelveDataSymbol(ticker));
+        url.searchParams.set("interval", "1day");
+        url.searchParams.set("outputsize", String(days));
+        url.searchParams.set("apikey", this.apiKey);
+
+        const res = await fetch(url);
+        const json = (await res.json()) as TwelveDataTimeSeriesResponse;
+        if (!res.ok || json.status === "error" || !json.values?.length) {
+            throw new Error(`Twelve Data time_series gagal: ${json.message ?? res.statusText}`);
+        }
+
+        return json.values
+            .map((v) => ({
+                timestamp: new Date(`${v.datetime}T00:00:00Z`),
+                open: Number(v.open),
+                high: Number(v.high),
+                low: Number(v.low),
+                close: Number(v.close),
+                adjClose: Number(v.close),
+                volume: Number(v.volume ?? 0),
+            }))
+            .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    }
+
+    async getQuote(ticker: string): Promise<ProviderQuote> {
+        const url = new URL(`${this.baseUrl}/quote`);
+        url.searchParams.set("symbol", toTwelveDataSymbol(ticker));
+        url.searchParams.set("apikey", this.apiKey);
+
+        const res = await fetch(url);
+        const json = (await res.json()) as TwelveDataQuoteResponse;
+        if (!res.ok || json.status === "error" || json.close == null) {
+            throw new Error(`Twelve Data quote gagal: ${json.message ?? res.statusText}`);
+        }
+
+        const price = Number(json.close);
+        const prev = Number(json.previous_close ?? json.close);
+        return {
+            ticker,
+            price,
+            changePct: prev > 0 ? ((price - prev) / prev) * 100 : 0,
+            volume: Number(json.volume ?? 0),
+        };
+    }
+}
+
+/**
+ * Coba provider secara berurutan — pakai hasil pertama yang berhasil.
+ * Ini yang bikin provider berbayar "tinggal colok" tanpa ubah service layer (PRD 10.3).
+ */
+class FallbackProvider implements MarketDataProvider {
+    name: string;
+
+    constructor(private readonly providers: MarketDataProvider[]) {
+        this.name = providers.map((p) => p.name).join("+");
+    }
+
+    getHistory(ticker: string, days: number): Promise<ProviderBar[]> {
+        return this.tryAll((p) => p.getHistory(ticker, days));
+    }
+
+    getQuote(ticker: string): Promise<ProviderQuote> {
+        return this.tryAll((p) => p.getQuote(ticker));
+    }
+
+    private async tryAll<T>(fn: (provider: MarketDataProvider) => Promise<T>): Promise<T> {
+        const errors: string[] = [];
+        for (const provider of this.providers) {
+            try {
+                return await fn(provider);
+            } catch (err) {
+                errors.push(`${provider.name}: ${(err as Error).message}`);
+                logger.warn({ err, provider: provider.name }, "provider data gagal, coba berikutnya");
+            }
+        }
+        throw new Error(`semua provider data gagal → ${errors.join(" | ")}`);
+    }
+}
+
+/** Susun rantai provider sesuai env: primary + fallback opsional. */
+export function buildProviderChain(): MarketDataProvider[] {
+    const yahoo = new YahooProvider();
+    const twelve = env.TWELVE_DATA_API_KEY ? new TwelveDataProvider(env.TWELVE_DATA_API_KEY) : null;
+
+    if (env.MARKET_DATA_PROVIDER === "twelvedata" && twelve) return [twelve, yahoo];
+    if (twelve) return [yahoo, twelve];
+    return [yahoo];
+}
 
 /** Provider aktif — bisa ditukar via env/config. */
-export const marketData: MarketDataProvider = new YahooProvider();
+export const marketData: MarketDataProvider = (() => {
+    const chain = buildProviderChain();
+    return chain.length === 1 ? chain[0]! : new FallbackProvider(chain);
+})();
 
 /** Fetch + simpan riwayat harga ke DB (idempoten, upsert). */
 export async function syncHistoryToDb(
