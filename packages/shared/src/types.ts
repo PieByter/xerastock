@@ -201,6 +201,7 @@ export type NotificationType =
     | "SIGNAL"
     | "TRADE_EXECUTED"
     | "DAILY_REPORT"
+    | "NEWS"
     | "SYSTEM"
     | "ERROR";
 
