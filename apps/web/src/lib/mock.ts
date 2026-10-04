@@ -1,6 +1,9 @@
 /**
- * Data contoh (mock) untuk UI — akan diganti dengan data asli dari DB
- * setelah pipeline data & API route tersedia.
+ * Data contoh (mock) untuk UI.
+ *
+ * Dipakai sebagai fallback otomatis oleh `lib/data.ts` saat database belum
+ * dikonfigurasi (DATABASE_URL kosong) atau belum ada data tersinkron, supaya
+ * dashboard tetap bisa dijalankan dalam mode demo.
  */
 
 export interface MockQuote {
@@ -15,17 +18,18 @@ export interface MockQuote {
     pbv: number;
     roe: number;
     divYield: number;
+    foreignNet1d: number;
 }
 
 export const MOCK_QUOTES: MockQuote[] = [
-    { ticker: "BBCA.JK", name: "Bank Central Asia", price: 9750, changePct: 0.62, volume: 8_200_000, rsi: 58.2, signal: "BUY", per: 21.4, pbv: 4.8, roe: 21.2, divYield: 2.6 },
-    { ticker: "BBRI.JK", name: "Bank Rakyat Indonesia", price: 5120, changePct: -0.39, volume: 45_100_000, rsi: 44.7, signal: "WATCH", per: 11.8, pbv: 2.1, roe: 18.4, divYield: 5.8 },
-    { ticker: "BMRI.JK", name: "Bank Mandiri", price: 6125, changePct: 1.24, volume: 22_400_000, rsi: 61.3, signal: "BUY", per: 10.2, pbv: 1.9, roe: 19.1, divYield: 4.9 },
-    { ticker: "TLKM.JK", name: "Telkom Indonesia", price: 2890, changePct: -1.03, volume: 31_800_000, rsi: 39.1, signal: "SELL", per: 18.2, pbv: 2.6, roe: 15.3, divYield: 6.1 },
-    { ticker: "ASII.JK", name: "Astra International", price: 5125, changePct: 0.49, volume: 9_700_000, rsi: 52.8, signal: "NONE", per: 8.7, pbv: 1.2, roe: 13.9, divYield: 4.2 },
-    { ticker: "BYAN.JK", name: "Bayan Resources", price: 18750, changePct: 2.18, volume: 3_200_000, rsi: 66.4, signal: "BUY", per: 6.4, pbv: 1.7, roe: 28.6, divYield: 9.4 },
-    { ticker: "ADRO.JK", name: "Adaro Energy", price: 2710, changePct: 0.74, volume: 18_900_000, rsi: 55.0, signal: "WATCH", per: 4.9, pbv: 1.1, roe: 22.8, divYield: 8.7 },
-    { ticker: "GOTO.JK", name: "GoTo Gojek Tokopedia", price: 74, changePct: -2.63, volume: 210_000_000, rsi: 31.2, signal: "WATCH", per: 0, pbv: 1.4, roe: -12.6, divYield: 0 },
+    { ticker: "BBCA.JK", name: "Bank Central Asia", price: 9750, changePct: 0.62, volume: 8_200_000, rsi: 58.2, signal: "BUY", per: 21.4, pbv: 4.8, roe: 21.2, divYield: 2.6, foreignNet1d: 184_500_000_000 },
+    { ticker: "BBRI.JK", name: "Bank Rakyat Indonesia", price: 5120, changePct: -0.39, volume: 45_100_000, rsi: 44.7, signal: "WATCH", per: 11.8, pbv: 2.1, roe: 18.4, divYield: 5.8, foreignNet1d: -212_800_000_000 },
+    { ticker: "BMRI.JK", name: "Bank Mandiri", price: 6125, changePct: 1.24, volume: 22_400_000, rsi: 61.3, signal: "BUY", per: 10.2, pbv: 1.9, roe: 19.1, divYield: 4.9, foreignNet1d: 96_400_000_000 },
+    { ticker: "TLKM.JK", name: "Telkom Indonesia", price: 2890, changePct: -1.03, volume: 31_800_000, rsi: 39.1, signal: "SELL", per: 18.2, pbv: 2.6, roe: 15.3, divYield: 6.1, foreignNet1d: -78_300_000_000 },
+    { ticker: "ASII.JK", name: "Astra International", price: 5125, changePct: 0.49, volume: 9_700_000, rsi: 52.8, signal: "NONE", per: 8.7, pbv: 1.2, roe: 13.9, divYield: 4.2, foreignNet1d: 12_600_000_000 },
+    { ticker: "BYAN.JK", name: "Bayan Resources", price: 18750, changePct: 2.18, volume: 3_200_000, rsi: 66.4, signal: "BUY", per: 6.4, pbv: 1.7, roe: 28.6, divYield: 9.4, foreignNet1d: 24_900_000_000 },
+    { ticker: "ADRO.JK", name: "Adaro Energy", price: 2710, changePct: 0.74, volume: 18_900_000, rsi: 55.0, signal: "WATCH", per: 4.9, pbv: 1.1, roe: 22.8, divYield: 8.7, foreignNet1d: -41_200_000_000 },
+    { ticker: "GOTO.JK", name: "GoTo Gojek Tokopedia", price: 74, changePct: -2.63, volume: 210_000_000, rsi: 31.2, signal: "WATCH", per: 0, pbv: 1.4, roe: -12.6, divYield: 0, foreignNet1d: 8_700_000_000 },
 ];
 
 export interface MockSignal {
@@ -106,17 +110,24 @@ export interface MockCandle {
     high: number;
     low: number;
     close: number;
+    volume: number;
 }
 
-/** Generate candlestick sintetis untuk demo chart. */
+/**
+ * Generate candlestick sintetis untuk demo chart.
+ * Volume dibuat deterministik dari seed dan diskalakan supaya nilai transaksi
+ * harian masuk akal (dipakai juga oleh statistik rata-rata volume).
+ */
 export function generateMockCandles(base = 5000, days = 120, seed = 1): MockCandle[] {
     const out: MockCandle[] = [];
     let price = base;
-    let s = seed;
+    let s = seed % 2147483647;
+    if (s <= 0) s += 2147483646;
     const rand = () => {
         s = (s * 16807) % 2147483647;
         return (s - 1) / 2147483646;
     };
+    const baseVolume = Math.min(Math.max(Math.round(400_000_000_000 / base), 1_000), 20_000_000_000);
     const start = new Date("2026-01-01T00:00:00Z");
     for (let i = 0; i < days; i++) {
         const drift = (rand() - 0.48) * 0.03;
@@ -132,8 +143,10 @@ export function generateMockCandles(base = 5000, days = 120, seed = 1): MockCand
             high: +high.toFixed(2),
             low: +low.toFixed(2),
             close: +close.toFixed(2),
+            volume: Math.round(baseVolume * (0.5 + rand() * 1.5)),
         });
         price = close;
     }
     return out;
 }
+
