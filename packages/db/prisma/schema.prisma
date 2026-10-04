@@ -47,6 +47,8 @@ model Stock {
   brokerSummaries    BrokerSummary[]
   indicatorSnapshots IndicatorSnapshot[]
   fundamentalSnapshots FundamentalSnapshot[]
+  corporateActions   CorporateAction[]
+  news               News[]
   alerts             Alert[]
   signals            Signal[]
   mlPredictions      MLPrediction[]
@@ -202,17 +204,18 @@ model Alert {
 // ---------- Sinyal ----------
 
 model Signal {
-  id         String   @id @default(uuid()) @db.Uuid
-  stockId    String   @db.Uuid
-  strategyId String?  @db.Uuid
-  source     String // TECHNICAL | FUNDAMENTAL | AI | RULE
-  direction  String // BUY | SELL | WATCH
-  reasonJson Json
-  price      Decimal  @db.Decimal(18, 4)
-  strength   Float    @default(0.5)
-  status     String   @default("NEW") // NEW | NOTIFIED | EXECUTED | EXPIRED
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String   @id @default(uuid()) @db.Uuid
+  stockId      String   @db.Uuid
+  strategyId   String?  @db.Uuid
+  strategyType String?  @default("SWING") // BSJP | BPJS | SWING
+  source       String // TECHNICAL | FUNDAMENTAL | AI | RULE
+  direction    String // BUY | SELL | WATCH
+  reasonJson   Json
+  price        Decimal  @db.Decimal(18, 4)
+  strength     Float    @default(0.5)
+  status       String   @default("NEW") // NEW | NOTIFIED | EXECUTED | EXPIRED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   stock        Stock          @relation(fields: [stockId], references: [id], onDelete: Cascade)
   strategy     Strategy?      @relation(fields: [strategyId], references: [id], onDelete: SetNull)
@@ -267,6 +270,7 @@ model Strategy {
   id             String   @id @default(uuid()) @db.Uuid
   userId         String   @db.Uuid
   name           String
+  strategyType   String   @default("SWING") // BSJP | BPJS | SWING
   stockIds       String[] // array ticker
   entryRulesJson Json
   exitRulesJson  Json
@@ -413,4 +417,62 @@ model CalendarDay {
   date         DateTime @id
   isTradingDay Boolean  @default(true)
   note         String?
+}
+
+// ---------- Corporate Action & Dividen (PRD §4.4 & §7) ----------
+
+model CorporateAction {
+  id          String    @id @default(uuid()) @db.Uuid
+  stockId     String    @db.Uuid
+  ticker      String
+  type        String    // DIVIDEND | RUPS | RIGHTS_ISSUE | STOCK_SPLIT
+  title       String
+  cumDate     DateTime
+  exDate      DateTime
+  recordDate  DateTime?
+  paymentDate DateTime?
+  detail      String?
+  createdAt   DateTime  @default(now())
+
+  stock Stock @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@index([ticker, cumDate])
+  @@index([cumDate])
+}
+
+// ---------- Berita & Sentimen AI (PRD §4.5 & §7) ----------
+
+model News {
+  id             String   @id @default(uuid()) @db.Uuid
+  stockId        String?  @db.Uuid
+  ticker         String?
+  relatedTickers String[]
+  source         String
+  title          String
+  url            String   @unique
+  publishedAt    DateTime
+  aiSummary      String?
+  aiSentiment    String   @default("NEUTRAL") // POSITIVE | NEUTRAL | NEGATIVE
+  createdAt      DateTime @default(now())
+
+  stock Stock? @relation(fields: [stockId], references: [id], onDelete: SetNull)
+
+  @@index([ticker, publishedAt(sort: Desc)])
+  @@index([publishedAt(sort: Desc)])
+}
+
+// ---------- Signal Log (PRD §4.6 & §7) ----------
+
+model SignalLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  signalId     String?  @db.Uuid
+  strategyType String   @default("SWING") // BSJP | BPJS | SWING
+  ticker       String
+  matchedAt    DateTime @default(now())
+  snapshotJson Json
+  notified     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([ticker, matchedAt(sort: Desc)])
+  @@index([strategyType])
 }

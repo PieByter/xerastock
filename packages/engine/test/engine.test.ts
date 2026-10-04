@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { sma, ema, rsi, macd, bollinger, atr } from "../src/indicators";
-import { evaluateRules } from "../src/rules";
+import { sma, ema, rsi, macd, bollinger, atr, stochastic } from "../src/indicators";
+import { evaluateRules, evaluateBsjp, evaluateBpjs, evaluateSwing, detectBrokerAccumulation } from "../src/rules";
 import { backtest } from "../src/backtest";
 import type { Candle } from "../src/indicators";
 
@@ -113,5 +113,120 @@ describe("backtest", () => {
         );
         expect(result.finalBalance).toBeGreaterThan(0);
         expect(result.trades.length).toBeGreaterThan(0);
+    });
+});
+
+describe("stochastic", () => {
+    it("menghitung %K dan %D tanpa error", () => {
+        const candles: Candle[] = Array.from({ length: 30 }, (_, i) => ({
+            open: 100 + i,
+            high: 102 + i,
+            low: 99 + i,
+            close: 101 + i,
+            volume: 5000,
+        }));
+        const res = stochastic(candles, 14, 3, 3);
+        expect(res.k.length).toBe(30);
+        expect(res.d.length).toBe(30);
+        const lastK = res.k[res.k.length - 1];
+        expect(lastK).not.toBeNull();
+    });
+});
+
+describe("IDX Trading Strategies (PRD §10.1)", () => {
+    it("BSJP mendeteksi volume spike + foreign net buy + bullish close", () => {
+        const candles: Candle[] = Array.from({ length: 25 }, () => ({
+            open: 1000,
+            high: 1010,
+            low: 990,
+            close: 1000,
+            volume: 10_000,
+        }));
+        // Bar terakhir dengan volume spike dan closing dekat high
+        candles.push({
+            open: 1000,
+            high: 1060,
+            low: 995,
+            close: 1055, // 1055 dekat 1060 (high)
+            volume: 25_000, // 2.5x rata-rata
+        });
+
+        const sig = evaluateBsjp({
+            candles,
+            foreignFlow: { todayNetForeign: 5_000_000 },
+        });
+
+        expect(sig).not.toBeNull();
+        expect(sig?.strategyType).toBe("BSJP");
+        expect(sig?.direction).toBe("BUY");
+        expect(sig?.strength).toBeGreaterThanOrEqual(0.65);
+    });
+
+    it("BPJS mendeteksi gap up pagi dan momentum", () => {
+        const candles: Candle[] = Array.from({ length: 20 }, (_, i) => ({
+            open: 5000 + i * 5,
+            high: 5050 + i * 5,
+            low: 4980 + i * 5,
+            close: 5020 + i * 5,
+            volume: 50_000,
+        }));
+        // Candle hari ini: gap up
+        candles.push({
+            open: 5180, // gap up dibanding kemarin 5115
+            high: 5225,
+            low: 5160,
+            close: 5200,
+            volume: 75_000,
+        });
+
+        const sig = evaluateBpjs({
+            candles,
+        });
+
+        expect(sig).not.toBeNull();
+        expect(sig?.strategyType).toBe("BPJS");
+        expect(sig?.direction).toBe("BUY");
+    });
+
+    it("Swing mendeteksi tren akumulasi dan membatalkan jika ada berita negatif", () => {
+        const candles: Candle[] = Array.from({ length: 40 }, (_, i) => ({
+            open: 8000 + i * 20,
+            high: 8050 + i * 20,
+            low: 7980 + i * 20,
+            close: 8030 + i * 20,
+            volume: 100_000,
+        }));
+
+        // Dengan akumulasi positif dan tanpa berita negatif
+        const sig = evaluateSwing({
+            candles,
+            foreignFlow: { multiDayNetForeign: 15_000_000 },
+            sentiment: { hasNegativeNews: false },
+        });
+        expect(sig).not.toBeNull();
+        expect(sig?.strategyType).toBe("SWING");
+
+        // Jika ada berita negatif, sinyal harus null (guardrail)
+        const sigWithBadNews = evaluateSwing({
+            candles,
+            foreignFlow: { multiDayNetForeign: 15_000_000 },
+            sentiment: { hasNegativeNews: true },
+        });
+        expect(sigWithBadNews).toBeNull();
+    });
+
+    it("detectBrokerAccumulation menandai broker dengan net buy ≥ 3 hari berturut-turut", () => {
+        const history = [
+            { date: "2026-09-15", brokerCode: "YP", netValue: 1_000_000 },
+            { date: "2026-09-16", brokerCode: "YP", netValue: 2_000_000 },
+            { date: "2026-09-17", brokerCode: "YP", netValue: 1_500_000 },
+            { date: "2026-09-17", brokerCode: "CC", netValue: -500_000 },
+        ];
+
+        const alerts = detectBrokerAccumulation(history);
+        expect(alerts.length).toBe(1);
+        expect(alerts[0]!.brokerCode).toBe("YP");
+        expect(alerts[0]!.consecutiveDays).toBe(3);
+        expect(alerts[0]!.message).toContain("Broker YP net buy 3 hari berturut-turut");
     });
 });

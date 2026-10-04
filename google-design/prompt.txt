@@ -1,0 +1,112 @@
+Design a modern personal stock market portfolio and analysis web application for the Indonesian stock exchange (IDX).
+
+The product is a serious financial dashboard for individual investors who trade IDX stocks using broker flow data, technical signals, and news context. The UI should feel professional, analytical, clean, fast, and data-focused — similar to modern fintech and trading platforms, but simpler than a professional trading terminal.
+
+COLOR PALETTE — DARK MODE (default)
+- Background (base): #0D1117 (deep charcoal, not pure black)
+- Surface / card background: #161B22
+- Elevated surface (modals, dropdowns): #1C2128
+- Border / divider: #21262D
+- Primary accent (electric blue/cyan): #2F81F7 with a cyan highlight variant #22D3EE for active/selected states
+- Positive / price up / net foreign buy: #22C55E
+- Negative / price down / net foreign sell: #EF4444
+- Warning / neutral signal: #F59E0B
+- Text primary: #E6EDF3 (off-white)
+- Text secondary: #8B949E (cool gray)
+- Text disabled: #545D68
+
+COLOR PALETTE — LIGHT MODE
+- Background: #F6F8FA
+- Card background: #FFFFFF
+- Border: #D0D7DE
+- Primary accent: same #2F81F7
+- Positive: #16A34A / Negative: #DC2626 / Warning: #D97706
+- Text primary: #1F2328
+- Text secondary: #57606A
+
+Both themes must feel like the same product — same accent hue, same semantic green/red/amber, only surface and text values swap.
+
+VISUAL STYLE
+- Dark-first design, proper light theme (not just inverted).
+- Medium rounded corners (10–14px).
+- Subtle borders and soft shadows only — no glassmorphism, no neon glow, no heavy gradients.
+- Compact, highly readable typography suited for dense financial data (tabular figures, monospace or tabular-nums for price columns).
+- Strategy-type badges use distinct but harmonious pill colors: BSJP = cyan pill, BPJS/Day Trade = amber pill, Swing/Hold = blue pill — all on dark surface with light text.
+- Sentiment tags on news use small colored dots (green/amber/red) rather than full colored backgrounds, to stay subtle.
+
+LAYOUT
+Responsive desktop-first dashboard:
+1. Left sidebar navigation (collapsible)
+2. Top header: search bar, market status pill (open/closed, WIB time), notification bell, user/profile menu
+3. Main content area
+4. Responsive down to tablet and mobile (sidebar collapses to bottom nav or hamburger)
+
+SIDEBAR NAVIGATION
+- Overview
+- Portfolio
+- Watchlist
+- Broker Flow (broker summary + net foreign flow)
+- Stock Screener
+- Technical Analysis
+- Signals & Alerts
+- News
+- AI Assistant (Claude chat)
+- Settings
+
+OVERVIEW DASHBOARD
+- Total portfolio value, today's P/L, total P/L, portfolio return %, cash balance
+- Market status indicator (IHSG open/closed, current IHSG value + change)
+- Portfolio performance line chart (area chart, subtle gradient fill under the line only — this is the one place a gradient is acceptable)
+- Watchlist mini-table with sparklines
+- Top gainers / losers (two side-by-side compact lists)
+- Active signals today — small cards showing ticker, strategy badge (BSJP/BPJS/Swing), and the condition that matched
+- Recent activity feed (trades, signal matches, dividend alerts)
+
+PORTFOLIO PAGE
+- Portfolio value + P/L summary cards
+- Asset allocation donut chart (by sector)
+- Holdings table: ticker, company name, quantity, avg buy price, current price, market value, unrealized P/L, P/L %, daily change — positive/negative values colored and right-aligned, tabular numbers
+
+STOCK DETAIL PAGE
+- Ticker, company name, current price, daily % change, market status
+- Interactive candlestick chart with time range selector: 1D, 1W, 1M, 3M, 6M, 1Y, 5Y
+- Volume bars below the chart, colored green/red per candle direction
+- Technical indicator panels: MACD, RSI, Stochastic, moving averages overlay — each indicator in its own collapsible sub-pane below the main chart
+- Broker Summary table: broker code, buy/sell frequency, volume, value, net position — sortable
+- Net Foreign Flow chart: cumulative line chart showing multi-day foreign accumulation/distribution trend
+- Upcoming corporate action banner (if any): cum-date dividend/RUPS countdown
+- Related news list with AI-generated 1-2 sentence summaries and sentiment dot
+- Key statistics panel: market cap, P/E, dividend yield, 52-week range
+- Watchlist toggle button and "Add transaction" button (primary accent, top-right of page)
+
+STOCK SCREENER
+Filters: price range, market cap, volume, daily change, RSI, MACD signal, P/E ratio, dividend yield, sector, active technical signal type (BSJP/BPJS/Swing match). Results in a dense, sortable data table with sticky header.
+
+WATCHLIST PAGE
+Table columns: ticker, company, current price, daily change, volume, market cap, RSI, MACD signal, net foreign flow (5D), strategy signal badge, mini sparkline chart — compact row height, hover state highlights row.
+
+SIGNALS & ALERTS PAGE
+- List of user-defined signal rules, grouped by strategy type (BSJP / BPJS / Swing) with colored section headers matching the badge colors
+- Each rule card: rule name, ticker(s), condition summary in plain language, active/inactive toggle, last matched timestamp
+- Signal history log table below: ticker, matched at, strategy type, snapshot of conditions at match time
+
+NEWS PAGE
+- Feed of news cards: source, headline, AI summary (1-2 sentences), sentiment dot, related ticker chips, timestamp
+- Filter by watchlist ticker or "general market"
+
+AI ASSISTANT PAGE
+- Chat interface styled like a focused analysis tool, not a generic chatbot — message bubbles use the surface color (#161B22 dark / #FFFFFF light), user messages slightly offset with accent-tinted border
+- Suggested prompt chips above input: "Ringkas broker flow [ticker] minggu ini", "Ada berita negatif [ticker]?", "Bandingkan RSI [ticker] vs sektor"
+- Persistent disclaimer strip at the bottom: "Analisis AI, bukan rekomendasi beli/jual" — small, muted text, always visible, not intrusive
+
+NOTIFICATION PREVIEW COMPONENT
+Include one UI element showing how a Discord embed-style alert would look when referenced inside the app (e.g., in a "notification settings" preview): dark card, colored left border matching strategy badge color, ticker + condition + timestamp.
+
+DESIGN PRINCIPLES
+- Financial data is the visual priority — whitespace and cards support it, never compete with it.
+- Use tables for dense data, charts only where trend matters more than exact numbers.
+- Positive/negative values must be instantly distinguishable by color, not just a +/- sign.
+- Keep navigation and header identical across all pages.
+- Interface should feel built for daily repeated use, not a marketing landing page.
+
+Create a polished high-fidelity UI design with realistic IDX stock data (use real-sounding tickers like BBCA, TLKM, BBRI, ASII), realistic candlestick charts, realistic broker summary numbers, and realistic portfolio values in Indonesian Rupiah (Rp) formatting.

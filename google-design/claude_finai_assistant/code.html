@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: 'class', theme: { extend: { colors: { 'inverse-surface': '#dae3ee', 'on-surface': '#dae3ee', 'on-secondary-fixed': '#001f25', 'on-tertiary-fixed': '#002109', 'on-tertiary-fixed-variant': '#005321', 'inverse-primary': '#005bbf', 'surface-bright': '#313a43', 'tertiary': '#4ae176', 'on-primary': '#002f68', 'primary': '#acc7ff', 'on-secondary': '#00363e', 'on-primary-container': '#00285b', 'primary-container': '#498fff', 'secondary': '#5de6ff', 'surface-container-lowest': '#060f16', 'surface-variant': '#2d363e', 'surface': '#0b141c', 'error': '#ffb4ab', 'secondary-fixed-dim': '#2fd9f4', 'outline-variant': '#414754', 'tertiary-fixed-dim': '#4ae176', 'background': '#0b141c', 'surface-container-low': '#141c24', 'surface-container': '#182028', 'on-error-container': '#ffdad6', 'inverse-on-surface': '#29313a', 'secondary-container': '#00cbe6', 'on-primary-fixed-variant': '#004492', 'outline': '#8b909f', 'on-secondary-fixed-variant': '#004e5a', 'surface-tint': '#acc7ff', 'on-tertiary-container': '#003111', 'error-container': '#93000a', 'on-tertiary': '#003915', 'surface-dim': '#0b141c', 'primary-fixed': '#d7e2ff', 'on-surface-variant': '#c1c6d6', 'primary-fixed-dim': '#acc7ff', 'on-secondary-container': '#00515d', 'on-background': '#dae3ee', 'tertiary-fixed': '#6bff8f', 'secondary-fixed': '#a2eeff', 'tertiary-container': '#00a74b', 'surface-container-highest': '#2d363e', 'on-primary-fixed': '#001a40', 'surface-container-high': '#222b33', 'on-error': '#690005' }, borderRadius: { DEFAULT: '0.25rem', lg: '0.5rem', xl: '0.75rem', full: '9999px' }, spacing: { 'space-xs': '0.25rem', 'space-md': '0.75rem', 'space-lg': '1.25rem', 'gutter-desktop': '1.25rem', 'gutter': '1rem', 'space-sm': '0.5rem', 'space-xl': '2rem', 'margin': '1rem', 'margin-desktop': '2rem' }, fontFamily: { 'body-sm': ['Inter'], 'data-mono-xl-mobile': ['JetBrains Mono'], 'headline-xl': ['Inter'], 'data-mono-sm': ['JetBrains Mono'], 'data-mono-lg': ['JetBrains Mono'], 'label-md': ['Inter'], 'body-lg': ['Inter'], 'headline-lg': ['Inter'], 'data-mono-md': ['JetBrains Mono'], 'data-mono-xl': ['JetBrains Mono'], 'body-md': ['Inter'], 'headline-xl-mobile': ['Inter'], 'label-sm': ['JetBrains Mono'], 'headline-md': ['Inter'] }, fontSize: { 'body-sm': ['12px', { lineHeight: '16px', fontWeight: '400' }], 'data-mono-xl-mobile': ['22px', { lineHeight: '28px', fontWeight: '600' }], 'headline-xl': ['32px', { lineHeight: '40px', letterSpacing: '-0.02em', fontWeight: '700' }], 'data-mono-sm': ['11px', { lineHeight: '14px', fontWeight: '400' }], 'data-mono-lg': ['16px', { lineHeight: '24px', fontWeight: '500' }], 'label-md': ['12px', { lineHeight: '16px', letterSpacing: '0.04em', fontWeight: '600' }], 'body-lg': ['16px', { lineHeight: '24px', fontWeight: '400' }], 'headline-lg': ['24px', { lineHeight: '32px', letterSpacing: '-0.01em', fontWeight: '600' }], 'data-mono-md': ['13px', { lineHeight: '18px', fontWeight: '500' }], 'data-mono-xl': ['28px', { lineHeight: '36px', letterSpacing: '-0.02em', fontWeight: '600' }], 'body-md': ['14px', { lineHeight: '20px', fontWeight: '400' }], 'headline-xl-mobile': ['24px', { lineHeight: '32px', letterSpacing: '-0.01em', fontWeight: '700' }], 'label-sm': ['10px', { lineHeight: '12px', letterSpacing: '0.06em', fontWeight: '600' }], 'headline-md': ['18px', { lineHeight: '24px', fontWeight: '600' }] } } } };</script></head><body class="bg-background font-body-md text-body-md text-on-surface antialiased min-h-screen"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-low z-50 flex flex-col justify-between py-4 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col"><div class="px-5 pb-5 flex items-center gap-3"><img alt="IDX Terminal Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1X-VOSIyLwjLclSaA0lXRtDcW43jFcPR5ey-wjdDLVFq5ExWqGzdS_WWcDpUCierGYMr1X9kaGJyk008vcq9GUD5DHzd73yhAnHyO-qQ-J7po6HQ01ppnPDMTjVUSzkoYLZzJ_9HvcdcftRb8qIS0167apqARslIcLuc0EtbAq_FzQgcs3ydJ8qY-L5HRccK2opB3zb4aE7KVVtnyPR62FgycfmAiwRJgXAUSJDxHr4rpuSWTJarzv17g"/><div class="flex items-center gap-2"><span class="font-headline-md text-headline-md text-on-surface tracking-tight">IDX Terminal</span><span class="px-1.5 py-0.5 rounded bg-secondary-container/20 text-secondary font-label-sm text-label-sm font-bold tracking-wider">PRO</span></div></div><div class="px-4 py-2"><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline px-2">Navigation</span></div><nav class="flex flex-col gap-0.5 px-3" data-active-classes="bg-surface-container-high text-primary font-bold"><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="overview" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">grid_view</span><span class="font-body-md text-body-md">Overview</span></div></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="portfolio" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">account_balance_wallet</span><span class="font-body-md text-body-md">Portfolio</span></div><span class="font-data-mono-sm text-data-mono-sm px-1.5 py-0.5 rounded bg-surface-container text-tertiary">Rp 482M</span></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="watchlist" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">visibility</span><span class="font-body-md text-body-md">Watchlist</span></div><span class="font-data-mono-sm text-data-mono-sm px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant">18</span></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="broker-flow" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">swap_horiz</span><span class="font-body-md text-body-md">Broker Flow</span></div></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="stock-screener" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">filter_alt</span><span class="font-body-md text-body-md">Stock Screener</span></div></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="technical-analysis" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">candlestick_chart</span><span class="font-body-md text-body-md">Technical Analysis</span></div></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="signals-alerts" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">notifications_active</span><span class="font-body-md text-body-md">Signals &amp; Alerts</span></div><span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-error-container text-error font-medium">3 Baru</span></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="news" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">newspaper</span><span class="font-body-md text-body-md">News</span></div></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="ai-assistant" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">psychology</span><span class="font-body-md text-body-md">Claude FinAI</span></div><span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-primary-container/20 text-primary">v2.5</span></a><a class="flex items-center justify-between px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="settings" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-lg">settings</span><span class="font-body-md text-body-md">Settings</span></div></a></nav></div><div class="px-4"><div class="p-3 rounded-lg bg-surface-container flex flex-col gap-2 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center justify-between"><span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Alert Webhook</span><div class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-tertiary animate-pulse"></span><span class="font-label-sm text-label-sm text-tertiary font-medium">Live</span></div></div><div class="flex items-center gap-2"><span class="material-symbols-outlined text-base text-on-surface-variant">rss_feed</span><span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant truncate">#idx-signals</span></div><p class="font-label-sm text-label-sm text-outline truncate">Bot Connected • Latency 14ms</p></div></div></aside><div class="pl-64 flex flex-col min-h-screen"><header class="fixed top-0 left-64 right-0 h-16 bg-surface/90 backdrop-blur-xl z-40 px-6 flex items-center justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-4 flex-1 max-w-2xl"><div class="relative w-full max-w-md"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span><input class="w-full pl-9 pr-14 py-2 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-secondary" placeholder="Search IDX ticker, broker code (e.g. BBCA, YP, AK)..." type="text"/><div class="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-surface-container-high text-outline font-data-mono-sm text-data-mono-sm border-0">⌘K</div></div><div class="hidden xl:flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-surface-container-low font-data-mono-sm text-data-mono-sm"><div class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-tertiary animate-pulse"></span><span class="text-tertiary font-semibold">PASAR BUKA</span></div><span class="text-outline-variant">•</span><div class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">IHSG 7.324,80</span><span class="text-tertiary">(+0,42% | +30,85)</span></div><span class="text-outline-variant">•</span><span class="text-on-surface-variant">Sesi 2 • 14:15:20 WIB</span></div></div><div class="flex items-center gap-3.5"><button class="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-all" type="button"><span class="material-symbols-outlined text-base text-secondary">add</span><span>Order / Transaksi</span></button><button class="relative p-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" type="button"><span class="material-symbols-outlined text-xl">notifications</span><span class="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-error ring-2 ring-surface"></span></button><button class="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" type="button"><span class="material-symbols-outlined text-xl">dark_mode</span></button><div class="flex items-center gap-3 pl-2"><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-1 ring-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUzNHUHNpcGzNK_BtIjcSx-_rXNKCkRQCpGcYAOuceXWS0B2fwc9ZUDX4H8BuzUo5YEjcDx6VDLYJDyalwM_ea1q8_2HrZvd1tKW8XbVD_9AB-xruPdvyc9k9nQuYYQb-IJshFiEY6wQJX5sS2dmReYuvVsIZU8CcsCHyYsnn9YeMgpCEMunOd9Z-rmN3fMQXhMv4LESQ3ibGVz5NOAly-9YXBmNxOsRCnvkT5bvoqS2_V5Uaj2gv7"/><div class="hidden lg:flex flex-col"><span class="font-label-md text-label-md text-on-surface leading-tight">Rian Pratama</span><span class="font-label-sm text-label-sm text-outline leading-tight">Equity Trader</span></div></div></div></header><main class="relative pt-16 bg-background flex-1 w-full"><div class="flex flex-col w-full">
+<div class="relative w-full overflow-hidden px-6 py-6 lg:px-8">
+<!-- Ambient glowing backdrop aura -->
+<div class="pointer-events-none absolute -top-24 right-10 h-96 w-96 rounded-full bg-primary/10 blur-3xl"></div>
+<div class="pointer-events-none absolute top-48 left-12 h-80 w-80 rounded-full bg-secondary/10 blur-3xl"></div>
+<!-- Header Section: Terminal Style Status Bar -->
+<div class="relative flex flex-col gap-4 rounded-xl bg-surface-container-low p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+<div class="flex flex-col gap-2">
+<div class="flex flex-wrap items-center gap-3">
+<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary">
+<span class="material-symbols-outlined text-2xl">psychology</span>
+</div>
+<div>
+<div class="flex flex-wrap items-center gap-2.5">
+<span class="font-headline-md text-headline-md text-on-surface">Claude FinAI Market Analyst</span>
+<span class="inline-flex items-center gap-1.5 rounded-full bg-primary-container/20 px-2.5 py-0.5 font-label-sm text-label-sm text-primary">
+<span class="h-1.5 w-1.5 rounded-full bg-primary animate-pulse"></span>
+                Claude 3.5 Sonnet Financial Engine
+              </span>
+</div>
+<p class="font-data-mono-sm text-data-mono-sm text-on-surface-variant flex items-center gap-1.5 mt-0.5">
+<span class="material-symbols-outlined text-sm text-tertiary">hub</span>
+              Connected to IDX Realtime Feed • Broker Summary • IHSG Macro • Corporate Filings
+            </p>
+</div>
+</div>
+</div>
+<!-- Action Buttons Toolbar -->
+<div class="flex flex-wrap items-center gap-2">
+<button class="flex items-center gap-1.5 rounded-lg bg-surface-container px-3 py-1.5 font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" id="clear-chat-btn" type="button">
+<span class="material-symbols-outlined text-sm">delete_sweep</span>
+<span>Bersihkan Riwayat</span>
+</button>
+<button class="flex items-center gap-1.5 rounded-lg bg-surface-container px-3 py-1.5 font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined text-sm text-secondary">bookmark_add</span>
+<span>Simpan Analisis ke Watchlist</span>
+</button>
+<button class="flex items-center gap-1.5 rounded-lg bg-surface-container px-3 py-1.5 font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined text-sm">ios_share</span>
+<span>Ekspor Ringkasan</span>
+</button>
+</div>
+</div>
+<!-- Suggested Financial Prompt Chips -->
+<div class="mt-4 flex flex-col gap-2">
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Quick Prompts &amp; IDX Screeners</span>
+<span class="h-1 w-1 rounded-full bg-outline"></span>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary">Live Tape Ready</span>
+</div>
+<div class="flex flex-wrap gap-2.5">
+<button class="flex items-center gap-2 rounded-lg bg-surface-container px-3.5 py-2 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-high hover:text-secondary transition-all shadow-sm" onclick="insertPrompt('📊 Ringkas broker flow BBCA &amp; BBRI minggu ini')" type="button">
+<span>📊</span>
+<span>Ringkas broker flow BBCA &amp; BBRI minggu ini</span>
+</button>
+<button class="flex items-center gap-2 rounded-lg bg-surface-container px-3.5 py-2 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-high hover:text-secondary transition-all shadow-sm" onclick="insertPrompt('🔍 Saham apa yang terdeteksi sinyal BSJP sore ini?')" type="button">
+<span>🔍</span>
+<span>Saham apa yang terdeteksi sinyal BSJP sore ini?</span>
+</button>
+<button class="flex items-center gap-2 rounded-lg bg-surface-container px-3.5 py-2 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-high hover:text-secondary transition-all shadow-sm" onclick="insertPrompt('💡 Bandingkan valuasi perbankan big-4 (BBCA, BBRI, BMRI, BBNI)')" type="button">
+<span>💡</span>
+<span>Bandingkan valuasi perbankan big-4 (BBCA, BBRI, BMRI, BBNI)</span>
+</button>
+<button class="flex items-center gap-2 rounded-lg bg-surface-container px-3.5 py-2 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-high hover:text-secondary transition-all shadow-sm" onclick="insertPrompt('⚠️ Analisis risiko foreign outflow di saham komoditas (ADRO, PTBA)')" type="button">
+<span>⚠️</span>
+<span>Analisis risiko foreign outflow di saham komoditas (ADRO, PTBA)</span>
+</button>
+</div>
+</div>
+<!-- Main Chat Dialogue Area -->
+<div class="mt-6 flex flex-col gap-6" id="chat-stream">
+<!-- Message 1: User Query Bubble -->
+<div class="flex justify-end">
+<div class="flex max-w-3xl flex-col items-end gap-1.5">
+<div class="flex items-center gap-2 px-1 font-label-sm text-label-sm text-outline">
+<span>Rian Pratama</span>
+<span>•</span>
+<span class="font-data-mono-sm text-data-mono-sm">14:18:04 WIB</span>
+</div>
+<div class="rounded-2xl rounded-tr-sm bg-surface-container-high px-5 py-4 text-on-surface shadow-sm">
+<p class="font-body-md text-body-md leading-relaxed">
+              Bagaimana broker summary <span class="font-data-mono-md text-data-mono-md font-semibold text-secondary">BBCA</span> hari ini menjelang cum-date dividen? Apakah ada indikasi akumulasi atau distribusi oleh broker asing?
+            </p>
+</div>
+<div class="flex items-center gap-2 px-1 font-label-sm text-label-sm text-outline">
+<span class="material-symbols-outlined text-sm text-tertiary">done_all</span>
+<span>Diterima oleh Engine</span>
+</div>
+</div>
+</div>
+<!-- Message 2: FinAI Structured Financial Breakdown -->
+<div class="flex justify-start">
+<div class="flex w-full max-w-5xl flex-col gap-2">
+<!-- Agent Info Bar -->
+<div class="flex items-center gap-2.5 px-1">
+<div class="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-on-primary font-bold font-data-mono-sm text-data-mono-sm">
+              AI
+            </div>
+<span class="font-label-md text-label-md text-primary font-medium">Claude FinAI</span>
+<span class="rounded bg-surface-container px-1.5 py-0.5 font-label-sm text-label-sm text-on-surface-variant">Synthesizing Realtime Feed</span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Latency: 284ms</span>
+</div>
+<!-- Card Content Wrapper with tonal layering -->
+<div class="relative overflow-hidden rounded-2xl rounded-tl-sm bg-surface-container-low p-6 shadow-md">
+<!-- Subtle decorative left anchor bar -->
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-tertiary"></div>
+<!-- Ticker Header Meta -->
+<div class="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-xl bg-surface-container p-4">
+<div class="flex items-center gap-3">
+<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-container-high font-data-mono-lg text-data-mono-lg font-bold text-on-surface">
+                  BBCA
+                </div>
+<div>
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md text-on-surface font-bold">Bank Central Asia Tbk.</span>
+<span class="inline-block h-2 w-2 rounded-full bg-tertiary shadow-[0_0_6px_rgba(74,225,118,0.6)]"></span>
+<span class="rounded bg-tertiary-container/20 px-2 py-0.5 font-label-sm text-label-sm text-tertiary font-semibold">STRONG ACCUMULATION</span>
+</div>
+<p class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">Sektor: Keuangan • Papan Utama • ISIN: ID1000109507</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="text-right">
+<span class="block font-label-sm text-label-sm uppercase text-outline">Harga Terakhir</span>
+<span class="font-data-mono-xl text-data-mono-xl text-tertiary font-bold">Rp 10.150</span>
+<span class="block font-data-mono-sm text-data-mono-sm text-tertiary">+125 (+1,25%)</span>
+</div>
+<div class="hidden sm:block text-right">
+<span class="block font-label-sm text-label-sm uppercase text-outline">Net Foreign Flow</span>
+<span class="font-data-mono-lg text-data-mono-lg text-tertiary font-bold">+Rp 142,8 M</span>
+<span class="block font-label-sm text-label-sm text-tertiary">Foreign Buyer 68,4%</span>
+</div>
+</div>
+</div>
+<!-- Analysis Points Bento Grid -->
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-12">
+<!-- Point 1 & 2: Verdict & Accumulation Breakdown -->
+<div class="flex flex-col gap-3 rounded-xl bg-surface-container p-4 lg:col-span-6">
+<div class="flex items-center gap-2 text-tertiary font-label-md text-label-md uppercase tracking-wider">
+<span class="material-symbols-outlined text-lg">verified</span>
+<span>1. Broker Summary Verdict</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface leading-relaxed">
+                  Terdeteksi <strong class="text-tertiary font-semibold">STRONG ACCUMULATION</strong> dari konsorsium broker institusi asing. Aliran dana masuk terpusat secara rapi tanpa pergerakan harga yang agresif, mencirikan akumulasi tipikal sebelum pembagian dividen tahun buku 2024.
+                </p>
+<div class="mt-1 rounded-lg bg-surface-container-high p-3.5 flex flex-col gap-2">
+<span class="font-label-sm text-label-sm uppercase text-outline">2. Top Foreign Accumulators</span>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="rounded bg-primary-container/20 px-2 py-0.5 font-data-mono-sm text-data-mono-sm font-bold text-primary">AK</span>
+<span class="font-body-sm text-body-sm text-on-surface">UBS Sekuritas Indonesia</span>
+</div>
+<span class="font-data-mono-md text-data-mono-md text-tertiary font-semibold">+Rp 185,4 M @ Rp 10.142</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="rounded bg-primary-container/20 px-2 py-0.5 font-data-mono-sm text-data-mono-sm font-bold text-primary">BK</span>
+<span class="font-body-sm text-body-sm text-on-surface">J.P. Morgan Sekuritas</span>
+</div>
+<span class="font-data-mono-md text-data-mono-md text-tertiary font-semibold">+Rp 140,2 M @ Rp 10.138</span>
+</div>
+</div>
+</div>
+<!-- Point 3: Seller Profile -->
+<div class="flex flex-col gap-3 rounded-xl bg-surface-container p-4 lg:col-span-6">
+<div class="flex items-center gap-2 text-error font-label-md text-label-md uppercase tracking-wider">
+<span class="material-symbols-outlined text-lg">trending_down</span>
+<span>3. Seller Profile (Distribusi Domestik)</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface leading-relaxed">
+                  Tekanan jual didominasi oleh broker ritel domestik yang melakukan aksi ambil untung (<span class="italic text-on-surface-variant">profit taking</span>) sebelum ex-date dividen. Total net sell kelompok ritel mencapai <span class="font-data-mono-md text-data-mono-md font-semibold text-error">Rp 126 Miliar</span>.
+                </p>
+<div class="mt-1 rounded-lg bg-surface-container-high p-3.5 flex flex-col gap-2">
+<span class="font-label-sm text-label-sm uppercase text-outline">Dominasi Penjual</span>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="rounded bg-error-container/30 px-2 py-0.5 font-data-mono-sm text-data-mono-sm font-bold text-error">YP</span>
+<span class="font-body-sm text-body-sm text-on-surface">Mirae Asset Sekuritas (Ritel)</span>
+</div>
+<span class="font-data-mono-md text-data-mono-md text-error font-semibold">-Rp 72,1 M @ Rp 10.155</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="rounded bg-error-container/30 px-2 py-0.5 font-data-mono-sm text-data-mono-sm font-bold text-error">PD</span>
+<span class="font-body-sm text-body-sm text-on-surface">Indo Premier Sekuritas</span>
+</div>
+<span class="font-data-mono-md text-data-mono-md text-error font-semibold">-Rp 53,9 M @ Rp 10.148</span>
+</div>
+</div>
+</div>
+<!-- Interactive Data Snippet Card: Top 3 Buy vs Sell Table -->
+<div class="rounded-xl bg-surface-container p-4 lg:col-span-12">
+<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-lg">table_chart</span>
+<span class="font-label-md text-label-md text-on-surface">Matriks Broker Flow BBCA (Sesi 1 &amp; 2 Berjalan)</span>
+</div>
+<div class="flex items-center gap-2 font-data-mono-sm text-data-mono-sm">
+<span class="text-on-surface-variant">Foreign Accumulation Ratio:</span>
+<span class="rounded bg-tertiary-container/30 px-2 py-0.5 text-tertiary font-bold">2.41x (Heavy Bullish)</span>
+</div>
+</div>
+<div class="overflow-x-auto rounded-lg bg-surface-container-lowest p-1">
+<table class="w-full text-left font-data-mono-sm text-data-mono-sm">
+<thead>
+<tr class="bg-surface-container-high text-outline">
+<th class="py-2 px-3 font-medium">Bkr Beli</th>
+<th class="py-2 px-3 font-medium text-right">Vol (Lot)</th>
+<th class="py-2 px-3 font-medium text-right">Nilai Beli</th>
+<th class="py-2 px-3 font-medium text-right">Avg Beli</th>
+<th class="py-2 px-3 font-medium text-center">Tipe</th>
+<th class="py-2 px-3 font-medium">Bkr Jual</th>
+<th class="py-2 px-3 font-medium text-right">Vol (Lot)</th>
+<th class="py-2 px-3 font-medium text-right">Nilai Jual</th>
+<th class="py-2 px-3 font-medium text-right">Avg Jual</th>
+<th class="py-2 px-3 font-medium text-center">Tipe</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-high text-on-surface">
+<tr class="hover:bg-surface-container transition-colors">
+<td class="py-2.5 px-3 font-bold text-tertiary">AK (UBS)</td>
+<td class="py-2.5 px-3 text-right">182.800</td>
+<td class="py-2.5 px-3 text-right text-tertiary font-semibold">Rp 185,4 M</td>
+<td class="py-2.5 px-3 text-right">10.142</td>
+<td class="py-2.5 px-3 text-center"><span class="px-1.5 py-0.5 rounded bg-primary-container/20 text-primary font-label-sm text-label-sm">Asing</span></td>
+<td class="py-2.5 px-3 font-bold text-error">YP (Mirae)</td>
+<td class="py-2.5 px-3 text-right">71.000</td>
+<td class="py-2.5 px-3 text-right text-error font-semibold">Rp 72,1 M</td>
+<td class="py-2.5 px-3 text-right">10.155</td>
+<td class="py-2.5 px-3 text-center"><span class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">Ritel</span></td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="py-2.5 px-3 font-bold text-tertiary">BK (JPMorgan)</td>
+<td class="py-2.5 px-3 text-right">138.300</td>
+<td class="py-2.5 px-3 text-right text-tertiary font-semibold">Rp 140,2 M</td>
+<td class="py-2.5 px-3 text-right">10.138</td>
+<td class="py-2.5 px-3 text-center"><span class="px-1.5 py-0.5 rounded bg-primary-container/20 text-primary font-label-sm text-label-sm">Asing</span></td>
+<td class="py-2.5 px-3 font-bold text-error">PD (IndoPrem)</td>
+<td class="py-2.5 px-3 text-right">53.100</td>
+<td class="py-2.5 px-3 text-right text-error font-semibold">Rp 53,9 M</td>
+<td class="py-2.5 px-3 text-right">10.148</td>
+<td class="py-2.5 px-3 text-center"><span class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">Ritel</span></td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="py-2.5 px-3 font-bold text-tertiary">RX (Macquarie)</td>
+<td class="py-2.5 px-3 text-right">86.200</td>
+<td class="py-2.5 px-3 text-right text-tertiary font-semibold">Rp 87,4 M</td>
+<td class="py-2.5 px-3 text-right">10.140</td>
+<td class="py-2.5 px-3 text-center"><span class="px-1.5 py-0.5 rounded bg-primary-container/20 text-primary font-label-sm text-label-sm">Asing</span></td>
+<td class="py-2.5 px-3 font-bold text-error">XC (Ajaib)</td>
+<td class="py-2.5 px-3 text-right">31.400</td>
+<td class="py-2.5 px-3 text-right text-error font-semibold">Rp 31,8 M</td>
+<td class="py-2.5 px-3 text-right">10.130</td>
+<td class="py-2.5 px-3 text-center"><span class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">Ritel</span></td>
+</tr>
+</tbody>
+<tfoot>
+<tr class="bg-surface-container font-semibold">
+<td class="py-2 px-3 text-tertiary" colspan="2">Total Top-3 Buyer: Rp 413,0 M</td>
+<td class="py-2 px-3 text-center text-secondary" colspan="3">Foreign Dominance: 84,2%</td>
+<td class="py-2 px-3 text-error" colspan="2">Total Top-3 Seller: Rp 157,8 M</td>
+<td class="py-2 px-3 text-right text-tertiary font-bold" colspan="3">Net Balance: +Rp 255,2 M</td>
+</tr>
+</tfoot>
+</table>
+</div>
+</div>
+<!-- Point 4: Dividend Analysis -->
+<div class="flex flex-col gap-3 rounded-xl bg-surface-container p-4 lg:col-span-7">
+<div class="flex items-center gap-2 text-secondary font-label-md text-label-md uppercase tracking-wider">
+<span class="material-symbols-outlined text-lg">calendar_month</span>
+<span>4. Analisis Cum-Date Dividen Final 2024</span>
+</div>
+<div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+<div class="rounded-lg bg-surface-container-high p-3">
+<span class="block font-label-sm text-label-sm text-outline">Nilai Dividen</span>
+<span class="font-data-mono-lg text-data-mono-lg font-bold text-on-surface">Rp 270<span class="font-body-sm text-body-sm text-outline font-normal">/lembar</span></span>
+</div>
+<div class="rounded-lg bg-surface-container-high p-3">
+<span class="block font-label-sm text-label-sm text-outline">Dividend Yield</span>
+<span class="font-data-mono-lg text-data-mono-lg font-bold text-tertiary">2,65%</span>
+</div>
+<div class="col-span-2 sm:col-span-1 rounded-lg bg-surface-container-high p-3">
+<span class="block font-label-sm text-label-sm text-outline">Cum-Date</span>
+<span class="font-data-mono-lg text-data-mono-lg font-bold text-secondary">20 Mar 2025</span>
+</div>
+</div>
+<div class="rounded-lg bg-surface-container-lowest p-3.5">
+<div class="flex items-center gap-2 font-label-md text-label-md text-on-surface mb-1">
+<span class="material-symbols-outlined text-base text-secondary">history_edu</span>
+<span>Pola Historis (Backtest 5 Tahun Terakhir):</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                    Pada <strong>4 dari 5 tahun terakhir</strong>, saham BBCA mengalami penguatan rata-rata <strong class="text-tertiary">1-2%</strong> menjelang cum-date akibat momentum <span class="italic">dividend hunting</span> oleh investor institusi dan dana pensiun domestik. Namun, waspadai potensi koreksi wajar (<span class="italic text-error">dividend trap</span>) 1-2 hari perdagangan setelah ex-date berkisar -2,0% s/d -2,8%.
+                  </p>
+</div>
+</div>
+<!-- Point 5: Rekomendasi Skenario -->
+<div class="flex flex-col gap-3 rounded-xl bg-surface-container p-4 lg:col-span-5">
+<div class="flex items-center gap-2 text-primary font-label-md text-label-md uppercase tracking-wider">
+<span class="material-symbols-outlined text-lg">alt_route</span>
+<span>5. Rekomendasi Skenario Trading</span>
+</div>
+<!-- Scenario 1 -->
+<div class="rounded-lg bg-surface-container-high p-3.5">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-md text-label-md font-semibold text-primary">Skenario Swing Trader</span>
+<span class="rounded bg-primary/20 px-2 py-0.5 font-label-sm text-label-sm text-primary">Holding 1-3 Minggu</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                    Pasang trailing stop ketat di level <strong class="font-data-mono-sm text-data-mono-sm text-error">Rp 9.950</strong>. Target resistance berikutnya menguji level All-Time High <strong class="font-data-mono-sm text-data-mono-sm text-tertiary">Rp 10.400</strong>.
+                  </p>
+</div>
+<!-- Scenario 2 -->
+<div class="rounded-lg bg-surface-container-high p-3.5">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-md text-label-md font-semibold text-secondary">Skenario BSJP</span>
+<span class="rounded bg-secondary/20 px-2 py-0.5 font-label-sm text-label-sm text-secondary">Beli Sore Jual Pagi</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                    Sangat cocok untuk memanfaatkan momentum <span class="italic text-on-surface">hold</span> hingga 1-2 hari persis sebelum cum-date, kemudian keluar saat pre-opening ex-date untuk meminimalkan risiko gap down.
+                  </p>
+</div>
+</div>
+</div>
+<!-- Quick Follow-up AI suggestions -->
+<div class="mt-4 flex flex-wrap items-center gap-2 pt-3 border-t border-surface-container-high">
+<span class="font-label-sm text-label-sm text-outline">Pertanyaan Lanjutan:</span>
+<button class="rounded-full bg-surface-container px-3 py-1 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-high hover:text-primary transition-colors" onclick="insertPrompt('Simulasikan return jika hold BBCA sampai ex-date dividen')" type="button">
+                ⚡ Simulasikan return jika hold sampai ex-date
+              </button>
+<button class="rounded-full bg-surface-container px-3 py-1 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-high hover:text-primary transition-colors" onclick="insertPrompt('Bandingkan akumulasi AK &amp; BK di BBCA vs BBRI')" type="button">
+                ⚡ Bandingkan broker AK &amp; BK di BBRI
+              </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Interactive Prompt Input Box Area -->
+<div class="sticky bottom-4 z-20 mt-6 rounded-2xl bg-surface-container-low p-4 shadow-xl backdrop-blur-md">
+<form class="flex flex-col gap-3" id="chat-form" onsubmit="event.preventDefault(); handleSend();">
+<!-- Input Textarea Container -->
+<div class="relative flex items-center">
+<input class="w-full rounded-xl bg-surface-container-lowest px-4 py-3.5 pr-28 font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-secondary" id="prompt-input" placeholder="Tanyakan analisis saham IDX, broker summary, atau strategi teknikal (e.g. analisa BBRI)..." type="text"/>
+<!-- Send Action Button -->
+<div class="absolute right-2.5 flex items-center gap-1.5">
+<button class="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-label-md text-label-md font-semibold text-on-primary shadow-sm hover:brightness-110 active:scale-95 transition-all" type="submit">
+<span>Kirim</span>
+<span class="material-symbols-outlined text-base">send</span>
+</button>
+</div>
+</div>
+<!-- Quick Attach Options & Mode Selectors -->
+<div class="flex flex-wrap items-center justify-between gap-3 px-1">
+<div class="flex flex-wrap items-center gap-2">
+<button class="flex items-center gap-1.5 rounded-lg bg-surface-container px-2.5 py-1.5 font-label-sm text-label-sm text-on-surface-variant hover:bg-surface-container-high hover:text-secondary transition-colors" onclick="insertPrompt('$BBRI ')" type="button">
+<span class="material-symbols-outlined text-sm text-secondary">monetization_on</span>
+<span>Pilih Ticker ($)</span>
+</button>
+<button class="flex items-center gap-1.5 rounded-lg bg-surface-container px-2.5 py-1.5 font-label-sm text-label-sm text-on-surface-variant hover:bg-surface-container-high hover:text-secondary transition-colors" type="button">
+<span class="material-symbols-outlined text-sm">candlestick_chart</span>
+<span>Lampirkan Chart</span>
+</button>
+<button class="flex items-center gap-1.5 rounded-lg bg-surface-container px-2.5 py-1.5 font-label-sm text-label-sm text-on-surface-variant hover:bg-surface-container-high hover:text-secondary transition-colors" type="button">
+<span class="material-symbols-outlined text-sm">filter_list</span>
+<span>Mode Screener</span>
+</button>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1.5 font-data-mono-sm text-data-mono-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-sm text-tertiary">bolt</span>
+<span>Streaming Fast-Token</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Press ↵ to ask</span>
+</div>
+</div>
+</form>
+</div>
+<!-- Persistent Disclaimer Strip -->
+<div class="mt-4 mb-2 flex items-center justify-center rounded-lg bg-surface-container-lowest/80 px-4 py-2.5 text-center">
+<p class="font-body-sm text-body-sm text-outline">
+        ⚖️ <strong class="text-on-surface-variant">Disclaimer:</strong> Analisis AI ini bersifat edukatif dan komputasional berbasis data historis &amp; broker flow IDX, bukan merupakan anjuran atau rekomendasi pasti jual/beli efek. Seluruh keputusan investasi sepenuhnya merupakan tanggung jawab independen pemodal.
+      </p>
+</div>
+</div>
+</div>
+<script>
+  function insertPrompt(text) {
+    const input = document.getElementById('prompt-input');
+    if (input) {
+      input.value = text;
+      input.focus();
+    }
+  }
+
+  function handleSend() {
+    const input = document.getElementById('prompt-input');
+    const stream = document.getElementById('chat-stream');
+    if (!input || !stream || !input.value.trim()) return;
+
+    const userText = input.value.trim();
+    input.value = '';
+
+    // Create user bubble
+    const userBubble = document.createElement('div');
+    userBubble.className = 'flex justify-end';
+    userBubble.innerHTML = `
+      <div class="flex max-w-3xl flex-col items-end gap-1.5">
+        <div class="flex items-center gap-2 px-1 font-label-sm text-label-sm text-outline">
+          <span>Rian Pratama</span>
+          <span>•</span>
+          <span class="font-data-mono-sm text-data-mono-sm">Baru saja</span>
+        </div>
+        <div class="rounded-2xl rounded-tr-sm bg-surface-container-high px-5 py-4 text-on-surface shadow-sm">
+          <p class="font-body-md text-body-md leading-relaxed">${userText}</p>
+        </div>
+      </div>
+    `;
+    stream.appendChild(userBubble);
+
+    // Simulate instant AI response container
+    setTimeout(() => {
+      const aiBubble = document.createElement('div');
+      aiBubble.className = 'flex justify-start';
+      aiBubble.innerHTML = `
+        <div class="flex w-full max-w-5xl flex-col gap-2">
+          <div class="flex items-center gap-2.5 px-1">
+            <div class="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-on-primary font-bold font-data-mono-sm text-data-mono-sm">
+              AI
+            </div>
+            <span class="font-label-md text-label-md text-primary font-medium">Claude FinAI</span>
+            <span class="rounded bg-surface-container px-1.5 py-0.5 font-label-sm text-label-sm text-on-surface-variant">Live Feed Synced</span>
+          </div>
+          <div class="relative overflow-hidden rounded-2xl rounded-tl-sm bg-surface-container-low p-5 shadow-md">
+            <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-primary"></div>
+            <p class="font-body-md text-body-md text-on-surface leading-relaxed">
+              Sedang memproses analisa komprehensif untuk query: <strong class="text-secondary font-mono">${userText}</strong>. Mengambil data transaksi tick-by-tick dari bursa IDX, kalkulasi Net Foreign Volume, serta histori akumulasi broker 5 hari terakhir...
+            </p>
+            <div class="mt-3 flex items-center gap-2 font-data-mono-sm text-data-mono-sm text-outline">
+              <span class="h-2 w-2 rounded-full bg-secondary animate-ping"></span>
+              <span>Menyusun laporan kuantitatif...</span>
+            </div>
+          </div>
+        </div>
+      `;
+      stream.appendChild(aiBubble);
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }, 400);
+  }
+
+  document.getElementById('clear-chat-btn')?.addEventListener('click', () => {
+    const stream = document.getElementById('chat-stream');
+    if (stream && confirm('Bersihkan seluruh sesi riwayat chat FinAI?')) {
+      stream.innerHTML = `
+        <div class="rounded-xl bg-surface-container p-6 text-center text-outline font-body-md text-body-md">
+          Riwayat chat telah dibersihkan. Silakan ajukan pertanyaan baru mengenai saham atau broker summary IDX.
+        </div>
+      `;
+    }
+  });
+</script></main></div></body></html>

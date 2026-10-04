@@ -4,16 +4,33 @@
 
 @layer base {
   :root {
-    --background: 222 47% 8%;
-    --foreground: 210 40% 96%;
-    --card: 222 40% 11%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --border: 217 33% 22%;
-    --primary: 217 91% 60%;
-    --success: 142 71% 45%;
-    --danger: 0 84% 60%;
-    --warning: 38 92% 50%;
+    /* Dark theme (default per google-design/prompt.txt) */
+    --background: 216 28% 7%;        /* #0D1117 deep charcoal */
+    --card: 215 21% 11%;              /* #161B22 surface/card */
+    --elevated: 214 17% 14%;          /* #1C2128 elevated surface */
+    --border: 215 14% 15%;            /* #21262D border/divider */
+    --primary: 215 94% 58%;           /* #2F81F7 primary accent */
+    --foreground: 210 31% 93%;        /* #E6EDF3 text primary */
+    --muted: 215 17% 14%;             /* #1C2128 */
+    --muted-foreground: 213 8% 58%;   /* #8B949E text secondary */
+    --success: 142 71% 45%;           /* #22C55E price up / foreign buy */
+    --danger: 0 84% 60%;              /* #EF4444 price down / foreign sell */
+    --warning: 38 92% 50%;            /* #F59E0B neutral / warning */
+  }
+
+  :root.light {
+    /* Light theme (proper light mode per google-design/prompt.txt) */
+    --background: 210 20% 98%;        /* #F6F8FA */
+    --card: 0 0% 100%;                /* #FFFFFF */
+    --elevated: 0 0% 100%;            /* #FFFFFF */
+    --border: 210 18% 85%;            /* #D0D7DE */
+    --primary: 215 94% 58%;           /* #2F81F7 */
+    --foreground: 212 14% 14%;        /* #1F2328 */
+    --muted: 210 20% 94%;
+    --muted-foreground: 211 10% 38%;   /* #57606A */
+    --success: 142 76% 36%;           /* #16A34A */
+    --danger: 0 74% 50%;              /* #DC2626 */
+    --warning: 36 94% 44%;            /* #D97706 */
   }
 
   * {
@@ -21,32 +38,84 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary font-sans;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
 
 @layer components {
   .card {
-    @apply rounded-xl border border-border bg-card p-4 shadow-sm;
+    @apply rounded-[12px] border border-border bg-card p-4 shadow-sm transition-colors;
+  }
+
+  .card-elevated {
+    @apply rounded-[12px] border border-border bg-elevated p-4 shadow-md;
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors;
+    @apply inline-flex items-center justify-center gap-2 rounded-[10px] px-3 py-1.5 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors bg-primary text-white hover:opacity-90;
+    @apply btn bg-primary text-white hover:bg-primary/90 active:scale-[0.98];
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors text-muted-foreground hover:bg-muted;
+    @apply btn text-muted-foreground hover:bg-muted hover:text-foreground active:scale-[0.98];
+  }
+
+  .btn-outline {
+    @apply btn border border-border text-foreground hover:bg-muted hover:border-primary/50 active:scale-[0.98];
   }
 
   .input {
-    @apply w-full rounded-lg border border-border bg-muted px-3 py-1.5 text-sm outline-none focus:border-primary;
+    @apply w-full rounded-[10px] border border-border bg-muted/60 px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all focus:border-primary focus:bg-background focus:ring-1 focus:ring-primary/30;
   }
 
   .badge {
-    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold tracking-wide;
   }
+
+  /* Strategy Badges per google-design/prompt.txt */
+  .badge-bsjp {
+    @apply inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/15 px-2.5 py-0.5 text-xs font-medium text-cyan-400;
+  }
+
+  .badge-bpjs {
+    @apply inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-amber-400;
+  }
+
+  .badge-swing {
+    @apply inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/15 px-2.5 py-0.5 text-xs font-medium text-blue-400;
+  }
+
+  /* Sentiment Dots per google-design/prompt.txt */
+  .sentiment-dot {
+    @apply inline-block h-2 w-2 rounded-full;
+  }
+  .sentiment-dot-positive {
+    @apply sentiment-dot bg-success;
+  }
+  .sentiment-dot-neutral {
+    @apply sentiment-dot bg-warning;
+  }
+  .sentiment-dot-negative {
+    @apply sentiment-dot bg-danger;
+  }
+}
+
+/* Custom compact financial scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
 }

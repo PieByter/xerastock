@@ -40,9 +40,18 @@ import {
     MOCK_SIGNALS,
     MOCK_TRADES,
     generateMockCandles,
+    type MockQuote,
 } from "./mock";
 
 const DB_TIMEOUT_MS = 2500;
+
+/**
+ * MOCK_QUOTES menyimpan sisi beli & jual secara terpisah, sedangkan `Quote`
+ * memakai net asing — turunkan di sini supaya angkanya selalu konsisten.
+ */
+function withForeignNet(mock: MockQuote): Quote {
+    return { ...mock, foreignNet1d: mock.foreignBuyToday - mock.foreignSellToday };
+}
 
 // ---------- Tipe view (bentuk yang dipakai komponen UI) ----------
 
@@ -270,7 +279,7 @@ export async function getQuotes(): Promise<Quote[]> {
         }),
     );
 
-    if (!rows || rows.length === 0) return MOCK_QUOTES;
+    if (!rows || rows.length === 0) return MOCK_QUOTES.map(withForeignNet);
 
     return rows
         .filter((s) => s.priceBars.length >= 2)
@@ -490,9 +499,10 @@ function buildDemoStockDetail(ticker: string, period: BrokerPeriodKey): StockDet
         seed: (mock.price % 100) + 7,
     });
     const foreignFlow = buildForeignFlow(sumForeignFlow(brokerRows));
+    const quote = withForeignNet(mock);
 
     return {
-        quote: { ...mock, foreignNet1d: foreignFlow?.netLatest ?? mock.foreignNet1d },
+        quote: { ...quote, foreignNet1d: foreignFlow?.netLatest ?? quote.foreignNet1d },
         candles,
         indicators: buildIndicators(candles),
         fundamentals: [],
