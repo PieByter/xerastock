@@ -1,8 +1,13 @@
 import { Card, CardHeader, Table, Badge, StatCard } from "@/components/ui";
-import { MOCK_TRADES } from "@/lib/mock";
-import { formatIDR, formatPct, formatDate } from "@/lib/format";
+import { getBotOverview } from "@/lib/data";
+import { formatIDR, formatDate } from "@/lib/format";
 
-export default function BotPage() {
+export const dynamic = "force-dynamic";
+
+export default async function BotPage() {
+  const bot = await getBotOverview();
+  const running = bot.status === "RUNNING";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -19,10 +24,23 @@ export default function BotPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Mode" value="PAPER" sub="SIGNAL_ONLY → PAPER" />
-        <StatCard label="Saldo Paper" value={formatIDR(10_000_000)} sub="Modal awal Rp 10jt" />
-        <StatCard label="Posisi Terbuka" value="2" sub="dari max 5" />
-        <StatCard label="PnL Hari Ini" value={formatPct(1.24)} sub="+Rp 124.000" tone="success" />
+        <StatCard label="Mode" value={bot.mode} sub={running ? "Bot berjalan" : "Bot berhenti"} />
+        <StatCard
+          label="Saldo Paper"
+          value={formatIDR(bot.balance)}
+          sub={`Modal awal ${formatIDR(bot.initialBalance, true)}`}
+        />
+        <StatCard
+          label="Posisi Terbuka"
+          value={String(bot.openPositions)}
+          sub={`dari max ${bot.risk.maxPositions}`}
+        />
+        <StatCard
+          label="Kill Switch"
+          value={bot.killSwitch ? "AKTIF" : "Aman"}
+          sub={bot.killSwitch ? "trading dihentikan" : "guardrail aktif"}
+          tone={bot.killSwitch ? "danger" : "success"}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -30,14 +48,13 @@ export default function BotPage() {
           <CardHeader
             title="Status Bot"
             subtitle="Discord bot & scheduler"
-            action={<Badge tone="success">● Running</Badge>}
+            action={<Badge tone={running ? "success" : "muted"}>● {running ? "Running" : "Stopped"}</Badge>}
           />
           <div className="space-y-3 text-sm">
             {[
-              ["Discord Bot", "Online · 10 slash commands", true],
-              ["Scheduler EOD", "Next: 16:00 WIB", true],
-              ["Quote Refresh", "Next: 5 menit lagi", true],
-              ["Trade Engine", "Mode PAPER · guardrail aktif", true],
+              ["Trade Engine", `Mode ${bot.mode} · kill switch ${bot.killSwitch ? "AKTIF" : "nonaktif"}`, running && !bot.killSwitch],
+              ["Posisi Terbuka", `${bot.openPositions} dari max ${bot.risk.maxPositions}`, true],
+              ["Data Provider", "Yahoo Finance (+ Twelve Data opsional)", true],
               ["ML Sidecar", "Belum aktif (Fase 2)", false],
             ].map(([label, value, ok]) => (
               <div key={label as string} className="flex items-center justify-between rounded-lg bg-muted px-3 py-2">
@@ -55,12 +72,12 @@ export default function BotPage() {
           <CardHeader title="Risk Management" subtitle="Guardrail aktif (default konservatif)" />
           <div className="space-y-2 text-sm">
             {[
-              ["Risk per posisi", "1%"],
-              ["Stop loss", "5%"],
-              ["Take profit", "10%"],
-              ["Daily loss limit", "2%"],
-              ["Max posisi", "5"],
-              ["Kill switch", "Aktif — /stop darurat"],
+              ["Risk per posisi", `${bot.risk.riskPerPosition}%`],
+              ["Stop loss", `${bot.risk.stopLoss}%`],
+              ["Take profit", `${bot.risk.takeProfit}%`],
+              ["Daily loss limit", `${bot.risk.dailyLossLimit}%`],
+              ["Max posisi", String(bot.risk.maxPositions)],
+              ["Kill switch", bot.killSwitch ? "AKTIF — /stop darurat" : "nonaktif"],
             ].map(([label, value]) => (
               <div key={label} className="flex items-center justify-between rounded-lg bg-muted px-3 py-2">
                 <span className="text-muted-foreground">{label}</span>
@@ -74,7 +91,7 @@ export default function BotPage() {
       <Card>
         <CardHeader title="Riwayat Trade" subtitle="Paper trading — eksekusi next-bar" />
         <Table headers={["Tanggal", "Ticker", "Side", "Qty", "Harga", "PnL", "Status"]}>
-          {MOCK_TRADES.map((t) => (
+          {bot.trades.map((t) => (
             <tr key={t.id}>
               <td className="px-3 py-2 text-muted-foreground">{formatDate(t.openedAt)}</td>
               <td className="px-3 py-2 font-medium">{t.ticker}</td>

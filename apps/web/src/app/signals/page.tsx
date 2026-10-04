@@ -1,9 +1,13 @@
 import { Card, CardHeader, Table, Badge } from "@/components/ui";
 import { SignalBadge } from "@/components/SignalBadge";
-import { MOCK_SIGNALS } from "@/lib/mock";
+import { getSignals } from "@/lib/data";
 import { formatIDR, formatDate, formatTime } from "@/lib/format";
 
-export default function SignalsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function SignalsPage() {
+  const signals = await getSignals(30);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -21,7 +25,7 @@ export default function SignalsPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        {MOCK_SIGNALS.map((s) => (
+        {signals.map((s) => (
           <Card key={s.id}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -49,7 +53,7 @@ export default function SignalsPage() {
       <Card>
         <CardHeader title="Riwayat Sinyal" subtitle="7 hari terakhir" />
         <Table headers={["Tanggal", "Ticker", "Arah", "Sumber", "Alasan", "Harga", "Status"]}>
-          {MOCK_SIGNALS.map((s) => (
+          {signals.map((s) => (
             <tr key={s.id}>
               <td className="px-3 py-2 text-muted-foreground">{formatDate(s.createdAt)}</td>
               <td className="px-3 py-2 font-medium">{s.ticker}</td>

@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { Card, CardHeader, Table, Badge } from "@/components/ui";
 import { SignalBadge, ChangePct } from "@/components/SignalBadge";
-import { MOCK_QUOTES } from "@/lib/mock";
-import { formatIDR } from "@/lib/format";
+import { ForeignNet } from "@/components/ForeignNet";
+import { getQuotes } from "@/lib/data";
+import { formatCompact, formatIDR } from "@/lib/format";
 
-export default function WatchlistPage() {
+export const dynamic = "force-dynamic";
+
+export default async function WatchlistPage() {
+  const quotes = await getQuotes();
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -20,11 +25,11 @@ export default function WatchlistPage() {
       <Card>
         <CardHeader
           title="Watchlist Utama"
-          subtitle="8 saham · notifikasi aktif"
+          subtitle={`${quotes.length} saham · notifikasi aktif`}
           action={<Badge tone="success">Aktif</Badge>}
         />
-        <Table headers={["Ticker", "Nama", "Harga", "Perubahan", "Volume", "RSI", "Sinyal", ""]}>
-          {MOCK_QUOTES.map((q) => (
+        <Table headers={["Ticker", "Nama", "Harga", "Perubahan", "Volume", "Net Asing", "RSI", "Sinyal", ""]}>
+          {quotes.map((q) => (
             <tr key={q.ticker}>
               <td className="px-3 py-2">
                 <Link href={`/stock/${q.ticker}`} className="font-medium hover:text-primary">
@@ -34,9 +39,8 @@ export default function WatchlistPage() {
               <td className="px-3 py-2 text-muted-foreground">{q.name}</td>
               <td className="px-3 py-2 font-medium">{formatIDR(q.price)}</td>
               <td className="px-3 py-2"><ChangePct value={q.changePct} /></td>
-              <td className="px-3 py-2 text-muted-foreground">
-                {(q.volume / 1_000_000).toFixed(1)}jt
-              </td>
+              <td className="px-3 py-2 text-muted-foreground">{formatCompact(q.volume)}</td>
+              <td className="px-3 py-2 text-right"><ForeignNet value={q.foreignNet1d} /></td>
               <td className="px-3 py-2">{q.rsi.toFixed(1)}</td>
               <td className="px-3 py-2"><SignalBadge direction={q.signal} /></td>
               <td className="px-3 py-2 text-right">

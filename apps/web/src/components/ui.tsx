@@ -69,6 +69,34 @@ export function StatCard({
   );
 }
 
+/** Kartu statistik kecil untuk deretan metrik di dalam panel analisis. */
+export function MiniStat({
+  label,
+  value,
+  hint,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: "default" | "success" | "danger";
+}) {
+  return (
+    <div className="rounded-lg bg-muted/60 px-3 py-2">
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p
+        className={cn(
+          "mt-0.5 text-sm font-semibold tabular-nums",
+          tone === "success" ? "text-success" : tone === "danger" ? "text-danger" : "text-foreground",
+        )}
+      >
+        {value}
+      </p>
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
 export function Table({ headers, children }: { headers: string[]; children: React.ReactNode }) {
   return (
     <div className="overflow-x-auto">

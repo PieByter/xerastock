@@ -18,6 +18,21 @@ export function formatPct(value: number): string {
     return `${sign}${value.toFixed(2)}%`;
 }
 
+/** Angka besar tanpa mata uang (volume lembar, jumlah transaksi). */
+export function formatCompact(value: number): string {
+    const abs = Math.abs(value);
+    if (abs >= 1_000_000_000_000) return `${(value / 1_000_000_000_000).toFixed(2)}T`;
+    if (abs >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}M`;
+    if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}jt`;
+    if (abs >= 1_000) return `${(value / 1_000).toFixed(1)}rb`;
+    return value.toLocaleString("id-ID", { maximumFractionDigits: 0 });
+}
+
+/** Tanggal bursa "YYYY-MM-DD" → "05 Sep 2026". */
+export function formatDayString(value: string): string {
+    return formatDate(`${value}T00:00:00Z`);
+}
+
 export function formatDate(d: Date | string): string {
     return new Intl.DateTimeFormat("id-ID", {
         day: "2-digit",

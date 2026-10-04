@@ -2,10 +2,17 @@
 
 import { useEffect, useRef } from "react";
 import { createChart, ColorType, type IChartApi, type ISeriesApi } from "lightweight-charts";
-import type { MockCandle } from "@/lib/mock";
+
+export interface ChartCandle {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
 
 interface Props {
-  candles: MockCandle[];
+  candles: ChartCandle[];
   height?: number;
 }
 
