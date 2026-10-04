@@ -44,6 +44,7 @@ model Stock {
 
   watchlistItems     WatchlistItem[]
   priceBars          PriceBar[]
+  brokerSummaries    BrokerSummary[]
   indicatorSnapshots IndicatorSnapshot[]
   fundamentalSnapshots FundamentalSnapshot[]
   alerts             Alert[]
@@ -67,6 +68,11 @@ model PriceBar {
   close     Decimal  @db.Decimal(18, 4)
   adjClose  Decimal  @db.Decimal(18, 4)
   volume    BigInt
+  // Foreign flow harian (PRD 4.3): volume dalam lembar, value dalam Rupiah.
+  foreignBuyVolume  BigInt  @default(0)
+  foreignSellVolume BigInt  @default(0)
+  foreignBuyValue   Decimal @default(0) @db.Decimal(24, 2)
+  foreignSellValue  Decimal @default(0) @db.Decimal(24, 2)
   source    String   @default("yahoo")
   isAdjusted Boolean @default(false)
   createdAt DateTime @default(now())
@@ -114,6 +120,31 @@ model FundamentalSnapshot {
 
   @@unique([stockId, asOfDate])
   @@index([stockId, asOfDate(sort: Desc)])
+}
+
+// ---------- Broker Summary (PRD 4.3) ----------
+
+model BrokerSummary {
+  id           String   @id @default(uuid()) @db.Uuid
+  stockId      String   @db.Uuid
+  date         DateTime // tanggal bursa (disimpan pada tengah malam UTC)
+  brokerCode   String // kode broker BEI, mis. "AK", "BK", "YP"
+  investorType String   @default("LOCAL") // LOCAL | FOREIGN
+  buyFreq      Int      @default(0)
+  buyVolume    BigInt   @default(0)
+  buyValue     Decimal  @default(0) @db.Decimal(24, 2)
+  sellFreq     Int      @default(0)
+  sellVolume   BigInt   @default(0)
+  sellValue    Decimal  @default(0) @db.Decimal(24, 2)
+  source       String   @default("scraper") // scraper | indexalpha | sample
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  stock Stock @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@unique([stockId, date, brokerCode])
+  @@index([stockId, date(sort: Desc)])
+  @@index([date(sort: Desc)])
 }
 
 // ---------- Watchlist ----------
