@@ -33,7 +33,10 @@ stock-analyst/
 - 🤖 **Bot Discord** — notifikasi real-time ke HP, 10 slash commands (`/watch`, `/price`, `/signal`, `/alert`, `/status`, `/start`, `/stop`, dll)
 - 🔔 **Notifier multi-channel** — abstraksi `NotificationChannel` dengan routing per tipe notifikasi ke channel `#sinyal`, `#news`, `#admin`, atau default
 - 🔁 **Provider data berlapis** — Yahoo Finance (default) dengan fallback otomatis ke Twelve Data bila `TWELVE_DATA_API_KEY` diisi
+- 📅 **Kalender bursa & corporate action** — hari libur dari `MARKET_HOLIDAYS` disimpan ke tabel `CalendarDay` dan job pasar otomatis dilewati; aksi korporasi ditarik tiap hari kerja 17:00 WIB (endpoint sendiri atau data contoh) sehingga reminder H-3/H-1 benar-benar terkirim
 - 🚨 **Signal Engine** — rule-based teknikal + fundamental, anti-look-ahead, dedup sinyal
+- 💹 **Quote live intraday** — harga terkini ditarik dari provider tiap 5 menit jam bursa dan disimpan sebagai bar hari ini (high/low diperluas, open tetap), sehingga stop loss, take profit, dan alert harga bereaksi intraday — bukan hanya saat EOD
+- 🔐 **Login dashboard (opsional)** — set `DASHBOARD_PASSWORD` untuk mengunci seluruh halaman; cookie sesi httpOnly berisi hash password, plus guard di semua aksi tulis
 - 💰 **Paper Trading tersambung otomatis** — sinyal BUY membuka posisi (ukuran dari risk per posisi, dibulatkan per lot), sinyal SELL menutupnya, dan stop loss / take profit ditutup otomatis saat refresh quote & EOD. PnL realisasi, saldo, dan posisi tercatat ke database sehingga halaman Portfolio & Bot menampilkan angka nyata
 - 🔌 **Broker-agnostic** — adapter pattern siap untuk integrasi broker live (Fase 3)
 - 🧩 **Provider broker dapat ditukar** — `BrokerSummaryProvider` (PRD 10.3) dengan pilihan `BROKER_PROVIDER=auto|http|sample`; sinkronisasi otomatis tiap hari kerja 16:30 WIB
@@ -50,8 +53,8 @@ stock-analyst/
 # 1. Install dependencies (workspaces)
 npm install
 
-# 2. Jalankan Postgres + Redis
-docker compose up -d
+# 2. Jalankan Postgres (Redis tidak dipakai)
+docker compose up -d postgres
 
 # 3. Setup env
 cp .env.example .env
@@ -141,8 +144,8 @@ Perilaku bisa disesuaikan lewat `.commitrc.json` di root:
 
 | Fase | Isi | Status |
 |---|---|---|
-| **Fase 1** | Data EOD, analisis teknikal, UI dashboard, Discord notifikasi | 🚧 Scaffold selesai |
-| **Fase 2** | Screener fundamental, broker summary & foreign flow, AI/ML sidecar, paper trading penuh | 🚧 Screener, portfolio, technical, broker flow, news + AI summary, paper trading tersambung, SignalLog selesai; ML sidecar & backtest UI menyusul |
+| **Fase 1** | Data EOD, analisis teknikal, UI dashboard, Discord notifikasi | ✅ Selesai (termasuk quote live intraday & kalender bursa) |
+| **Fase 2** | Screener fundamental, broker summary & foreign flow, AI/ML sidecar, paper trading penuh | 🚧 Screener, portfolio, technical, broker flow, news + AI summary, paper trading tersambung, SignalLog, corporate action selesai; ML sidecar & backtest UI menyusul |
 | **Fase 3** | Auto buy/sell live + integrasi broker | ⏳ |
 
 ## Catatan Penting
@@ -154,6 +157,11 @@ Perilaku bisa disesuaikan lewat `.commitrc.json` di root:
 - **Sumber data broker**: `apps/worker/src/services/brokerData.ts` mendefinisikan `BrokerSummaryProvider` (`getBrokerSummary`/`getForeignFlow`). Set `BROKER_API_URL` (template dengan placeholder `{ticker}`, opsional `{date}`) untuk memakai endpoint JSON sendiri; kalau kosong, worker memakai provider `sample` deterministik. Baris hasil provider `http` disimpan dengan `source = "scraper"`, hasil fallback dengan `source = "sample"`, jadi data sintetis selalu bisa dibedakan.
 - **Channel notifikasi**: atur `DISCORD_SIGNAL_CHANNEL_ID`, `DISCORD_NEWS_CHANNEL_ID`, dan `DISCORD_ADMIN_CHANNEL_ID`. Bila kosong, notifikasi jatuh ke `DISCORD_NOTIFY_CHANNEL_ID`.
 - **Auto trade live**: butuh broker dengan API resmi. Paper trading dulu sampai ada broker terverifikasi.
+- **Menjalankan seluruh stack dengan Docker**: `docker compose up -d --build` menjalankan Postgres + web (port 3000) + worker. Env worker dibaca dari `.env` root (opsional). **`DASHBOARD_PASSWORD` di-set saat build image web** karena middleware Next.js membacanya saat build — ubah nilainya berarti build ulang.
+- **Keamanan dashboard**: tanpa `DASHBOARD_PASSWORD`, dashboard terbuka (aman untuk lokal). Untuk deploy publik isi password; semua halaman dilindungi middleware, `/login` satu-satunya halaman publik, dan aksi tulis (watchlist, mode bot, kill switch, risk) dicek ulang di server action. Ini bukan sistem auth multi-user.
+- **Quote live**: job `quote refresh` (tiap 5 menit jam bursa) menarik harga terkini dan menyimpannya sebagai bar hari ini — `close` = harga terakhir, `high`/`low` diperluas, `open` dibiarkan agar bar tetap konsisten saat data EOD resmi menimpanya. Ini yang membuat SL/TP dan alert harga reaktif intraday.
+- **Kalender bursa**: isi `MARKET_HOLIDAYS="2026-12-25,2027-01-01"` (dipisah koma) — worker menyimpannya ke `CalendarDay` saat start, dan job pasar (sesi sinyal, EOD, broker sync, quote refresh, corporate action, reminder) dilewati pada tanggal tersebut.
+- **Corporate action**: `CORPORATE_ACTION_PROVIDER=auto|http|sample`. `auto` memakai `CORPORATE_ACTION_API_URL` (template dengan `{ticker}`) bila diisi, kalau tidak memakai data contoh deterministik agar reminder H-3/H-1 tetap bisa diuji. Tanggal dinormalisasi ke tengah malam WIB supaya sinkronisasi idempoten.
 - **Mengaktifkan paper trading**: buka **Settings → Mode Bot → PAPER**, lalu **Start Bot**. Mode global ini jadi master switch — ia juga menyinkronkan `mode` semua strategi. Eksekusi hanya jalan bila `killSwitch = false`, `mode = PAPER`, dan `status = RUNNING`; kalau salah satu tidak terpenuhi, sinyal tetap dibuat & dinotifikasi tapi tidak ada order.
 - **Guardrail trading** (`apps/worker/src/services/tradeEngine.ts`): maksimum posisi terbuka, ukuran posisi = (saldo × risk per posisi) ÷ jarak stop loss dibulatkan ke bawah per lot, batas kerugian harian 2% memblokir entry baru, dan tidak ada averaging (satu posisi per saham per strategi). Nilai default ada di `DEFAULT_RISK_PARAMS` dan bisa diubah dari halaman Settings.
 - **Stop loss / take profit** dipantau pada tiap refresh quote (jam bursa) dan di pipeline EOD; posisi yang kena akan ditutup otomatis dengan PnL tercatat plus notifikasi `TRADE_EXECUTED` ke Discord.
