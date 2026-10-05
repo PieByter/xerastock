@@ -13,6 +13,7 @@ import { prisma } from "@stock-analyst/db";
 import {
     atr,
     bollinger,
+    drawdownStats,
     generateSampleBrokerRows,
     lastNonNull,
     macd,
@@ -21,9 +22,10 @@ import {
     sumForeignFlow,
     type BrokerRow,
     type Candle,
+    type DrawdownStats,
     type ForeignFlowPoint,
 } from "@stock-analyst/engine";
-import { DEFAULT_RISK_PARAMS } from "@stock-analyst/shared";
+import { DEFAULT_RISK_PARAMS, type ScreenerFilter } from "@stock-analyst/shared";
 import {
     buildBrokerSummary,
     buildForeignFlow,
@@ -628,6 +630,8 @@ export interface PortfolioView {
     holdings: PortfolioHoldingView[];
     sectorAllocation: { sector: string; value: number; percentage: number; color: string }[];
     performance: { date: string; value: number }[];
+    /** Statistik drawdown dari kurva performa; null bila kurva belum ada. */
+    drawdown: DrawdownStats | null;
     isDemo: boolean;
 }
 
@@ -658,6 +662,7 @@ function mockPortfolio(): PortfolioView {
         })),
         sectorAllocation: MOCK_PORTFOLIO.sectorAllocation,
         performance: MOCK_PORTFOLIO.performanceChart,
+        drawdown: drawdownStats(MOCK_PORTFOLIO.performanceChart.map((p) => p.value)),
         isDemo: true,
     };
 }
@@ -768,6 +773,7 @@ export async function getPortfolio(): Promise<PortfolioView> {
         holdings: holdings.sort((a, b) => b.marketValue - a.marketValue),
         sectorAllocation,
         performance,
+        drawdown: drawdownStats(performance.map((p) => p.value)),
         isDemo: false,
     };
 }
@@ -1187,5 +1193,28 @@ export async function getCorporateActions(daysAhead = 30): Promise<CorporateActi
         paymentDate: ca.paymentDate?.toISOString().slice(0, 10) ?? null,
         detail: ca.detail,
         daysUntilCumDate: Math.max(0, Math.ceil((ca.cumDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))),
+    }));
+}
+
+// ---------- Preset screener (FR-FUND-004) ----------
+
+export interface ScreenerPresetView {
+    id: string;
+    name: string;
+    filters: ScreenerFilter[];
+    updatedAt: string;
+}
+
+/** Preset screener tersimpan; [] saat DB kosong/tidak tersedia (mode demo). */
+export async function getScreenerPresets(): Promise<ScreenerPresetView[]> {
+    const rows = await safe("getScreenerPresets", () =>
+        prisma.screenerPreset.findMany({ orderBy: { updatedAt: "desc" }, take: 50 }),
+    );
+    if (!rows) return [];
+    return rows.map((p) => ({
+        id: p.id,
+        name: p.name,
+        filters: (p.filtersJson ?? []) as unknown as ScreenerFilter[],
+        updatedAt: p.updatedAt.toISOString(),
     }));
 }

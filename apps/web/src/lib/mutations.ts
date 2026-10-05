@@ -7,6 +7,7 @@
  */
 
 import { prisma } from "@stock-analyst/db";
+import type { ScreenerFilter } from "@stock-analyst/shared";
 import { isAuthenticated } from "@/lib/auth";
 
 export interface ActionResult {
@@ -190,5 +191,90 @@ export async function updateRiskParams(input: RiskParamsInput): Promise<ActionRe
         };
     } catch (err) {
         return { ok: false, message: `Gagal menyimpan risk params: ${(err as Error).message}` };
+    }
+}
+
+// ---------- Preset screener (FR-FUND-004) ----------
+
+const SCREENER_FIELDS: ScreenerFilter["field"][] = ["per", "pbv", "roe", "marketCap", "divYield", "rsi14", "maCross"];
+const SCREENER_OPERATORS: ScreenerFilter["operator"][] = ["gt", "lt", "between"];
+
+/** Validasi & normalisasi filter dari UI sebelum disimpan ke DB. */
+function validateScreenerFilters(
+    input: unknown,
+): { ok: true; filters: ScreenerFilter[] } | { ok: false; message: string } {
+    if (!Array.isArray(input)) return { ok: false, message: "Filter harus berupa array." };
+
+    const filters: ScreenerFilter[] = [];
+    for (const raw of input) {
+        const item = raw as Partial<ScreenerFilter>;
+        if (!item || typeof item !== "object") {
+            return { ok: false, message: "Filter tidak valid." };
+        }
+        const field = item.field as ScreenerFilter["field"];
+        const operator = item.operator as ScreenerFilter["operator"];
+        if (!SCREENER_FIELDS.includes(field)) {
+            return { ok: false, message: `Field filter "${String(item.field)}" tidak didukung.` };
+        }
+        if (!SCREENER_OPERATORS.includes(operator)) {
+            return { ok: false, message: `Operator filter "${String(item.operator)}" tidak didukung.` };
+        }
+        if (operator === "between") {
+            const value = item.value;
+            if (!Array.isArray(value) || value.length !== 2 || value.some((v) => !Number.isFinite(Number(v)))) {
+                return { ok: false, message: "Nilai filter between harus [min, max] berupa angka." };
+            }
+            filters.push({ field, operator, value: [Number(value[0]), Number(value[1])] });
+        } else {
+            if (!Number.isFinite(Number(item.value))) {
+                return { ok: false, message: "Nilai filter harus angka." };
+            }
+            filters.push({ field, operator, value: Number(item.value) });
+        }
+    }
+    return { ok: true, filters };
+}
+
+/** Simpan (upsert by nama) preset screener milik owner. */
+export async function saveScreenerPreset(name: string, filters: unknown): Promise<ActionResult> {
+    const blocked = guard();
+    if (blocked) return blocked;
+
+    const cleanName = name.trim();
+    if (cleanName.length < 1 || cleanName.length > 40) {
+        return { ok: false, message: "Nama preset harus 1-40 karakter." };
+    }
+    const validated = validateScreenerFilters(filters);
+    if (!validated.ok) return { ok: false, message: validated.message };
+
+    try {
+        const userId = await ensureOwner();
+        const filtersJson = JSON.parse(JSON.stringify(validated.filters));
+        const preset = await prisma.screenerPreset.upsert({
+            where: { userId_name: { userId, name: cleanName } },
+            update: { filtersJson },
+            create: { userId, name: cleanName, filtersJson },
+        });
+        return { ok: true, message: `Preset "${preset.name}" disimpan (${validated.filters.length} filter).` };
+    } catch (err) {
+        return { ok: false, message: `Gagal menyimpan preset: ${(err as Error).message}` };
+    }
+}
+
+/** Hapus preset screener milik owner. */
+export async function deleteScreenerPreset(id: string): Promise<ActionResult> {
+    const blocked = guard();
+    if (blocked) return blocked;
+
+    if (!id) return { ok: false, message: "ID preset tidak valid." };
+
+    try {
+        const userId = await ensureOwner();
+        const result = await prisma.screenerPreset.deleteMany({ where: { id, userId } });
+        return result.count > 0
+            ? { ok: true, message: "Preset dihapus." }
+            : { ok: false, message: "Preset tidak ditemukan." };
+    } catch (err) {
+        return { ok: false, message: `Gagal menghapus preset: ${(err as Error).message}` };
     }
 }
