@@ -36,6 +36,9 @@ import {
     type StockStatsView,
 } from "./brokerAnalysis";
 import {
+    MOCK_CORPORATE_ACTIONS,
+    MOCK_NEWS,
+    MOCK_PORTFOLIO,
     MOCK_QUOTES,
     MOCK_SIGNALS,
     MOCK_TRADES,
@@ -585,4 +588,375 @@ export async function getStockDetail(
         foreignFlow: buildForeignFlow(toForeignFlowPoints([...record.priceBars])),
         isDemo: false,
     };
+}
+
+// ---------- Portofolio ----------
+
+export interface PortfolioHoldingView {
+    ticker: string;
+    name: string;
+    shares: number;
+    lots: number;
+    avgPrice: number;
+    currentPrice: number;
+    marketValue: number;
+    unrealizedPnl: number;
+    unrealizedPnlPct: number;
+    dailyChangePct: number;
+    sector: string;
+    weightPct: number;
+}
+
+export interface PortfolioView {
+    totalValue: number;
+    totalInvested: number;
+    todayPnl: number;
+    todayPnlPct: number;
+    totalPnl: number;
+    totalPnlPct: number;
+    cashBalance: number;
+    holdings: PortfolioHoldingView[];
+    sectorAllocation: { sector: string; value: number; percentage: number; color: string }[];
+    performance: { date: string; value: number }[];
+    isDemo: boolean;
+}
+
+const SECTOR_COLORS = ["#2F81F7", "#22D3EE", "#F59E0B", "#10B981", "#8B5CF6", "#EF4444", "#EC4899"];
+
+function mockPortfolio(): PortfolioView {
+    return {
+        totalValue: MOCK_PORTFOLIO.totalValue,
+        totalInvested: MOCK_PORTFOLIO.totalInvested,
+        todayPnl: MOCK_PORTFOLIO.todayPnl,
+        todayPnlPct: MOCK_PORTFOLIO.todayPnlPct,
+        totalPnl: MOCK_PORTFOLIO.totalPnl,
+        totalPnlPct: MOCK_PORTFOLIO.totalPnlPct,
+        cashBalance: MOCK_PORTFOLIO.cashBalance,
+        holdings: MOCK_PORTFOLIO.holdings.map((h) => ({
+            ticker: h.ticker,
+            name: h.companyName,
+            shares: h.shares,
+            lots: h.lots,
+            avgPrice: h.avgBuyPrice,
+            currentPrice: h.currentPrice,
+            marketValue: h.marketValue,
+            unrealizedPnl: h.unrealizedPnl,
+            unrealizedPnlPct: h.unrealizedPnlPct,
+            dailyChangePct: h.dailyChangePct,
+            sector: h.sector,
+            weightPct: h.weightPct,
+        })),
+        sectorAllocation: MOCK_PORTFOLIO.sectorAllocation,
+        performance: MOCK_PORTFOLIO.performanceChart,
+        isDemo: true,
+    };
+}
+
+/** Portofolio dari posisi paper trading di DB; fallback ke data contoh. */
+export async function getPortfolio(): Promise<PortfolioView> {
+    const [account, positions] = await Promise.all([
+        safe("portfolioAccount", () => prisma.paperAccount.findFirst({ orderBy: { updatedAt: "desc" } })),
+        safe("portfolioPositions", () =>
+            prisma.position.findMany({
+                where: { mode: "PAPER" },
+                include: {
+                    stock: {
+                        include: { priceBars: { orderBy: { timestamp: "desc" }, take: 2 } },
+                    },
+                },
+            }),
+        ),
+    ]);
+
+    if (!positions || positions.length === 0) return mockPortfolio();
+
+    const holdings: PortfolioHoldingView[] = [];
+    let todayPnl = 0;
+
+    for (const position of positions) {
+        const bars = position.stock.priceBars;
+        if (bars.length === 0) continue;
+        const currentPrice = num(bars[0]!.close);
+        const prevClose = num(bars[1]?.close ?? bars[0]!.close);
+        const qty = position.qty;
+        const avgPrice = num(position.avgEntry);
+        const marketValue = qty * currentPrice;
+        const invested = qty * avgPrice;
+        const unrealizedPnl = marketValue - invested;
+
+        todayPnl += qty * (currentPrice - prevClose);
+        holdings.push({
+            ticker: position.stock.ticker,
+            name: position.stock.name,
+            shares: qty,
+            lots: Math.round(qty / 100),
+            avgPrice: round(avgPrice),
+            currentPrice: round(currentPrice),
+            marketValue: round(marketValue),
+            unrealizedPnl: round(unrealizedPnl),
+            unrealizedPnlPct: invested > 0 ? round((unrealizedPnl / invested) * 100) : 0,
+            dailyChangePct: prevClose > 0 ? round(((currentPrice - prevClose) / prevClose) * 100) : 0,
+            sector: position.stock.sector ?? "Lainnya",
+            weightPct: 0,
+        });
+    }
+
+    const cashBalance = account ? num(account.balance) : 0;
+    const holdingsValue = holdings.reduce((sum, h) => sum + h.marketValue, 0);
+    const totalValue = holdingsValue + cashBalance;
+    const totalInvested = holdings.reduce((sum, h) => sum + h.shares * h.avgPrice, 0);
+    const totalPnl = holdingsValue - totalInvested;
+
+    for (const holding of holdings) {
+        holding.weightPct = totalValue > 0 ? round((holding.marketValue / totalValue) * 100, 1) : 0;
+    }
+
+    const bySector = new Map<string, number>();
+    for (const holding of holdings) {
+        bySector.set(holding.sector, (bySector.get(holding.sector) ?? 0) + holding.marketValue);
+    }
+    const sectorAllocation = [...bySector.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([sector, value], i) => ({
+            sector,
+            value: round(value),
+            percentage: holdingsValue > 0 ? round((value / holdingsValue) * 100, 1) : 0,
+            color: SECTOR_COLORS[i % SECTOR_COLORS.length]!,
+        }));
+
+    return {
+        totalValue: round(totalValue),
+        totalInvested: round(totalInvested),
+        todayPnl: round(todayPnl),
+        todayPnlPct: totalValue > 0 ? round((todayPnl / totalValue) * 100) : 0,
+        totalPnl: round(totalPnl),
+        totalPnlPct: totalInvested > 0 ? round((totalPnl / totalInvested) * 100) : 0,
+        cashBalance: round(cashBalance),
+        holdings: holdings.sort((a, b) => b.marketValue - a.marketValue),
+        sectorAllocation,
+        performance: [],
+        isDemo: false,
+    };
+}
+
+// ---------- Analisis teknikal multi-saham ----------
+
+export type TrendLabel = "bullish" | "bearish" | "neutral";
+
+export interface TechnicalRow {
+    ticker: string;
+    name: string;
+    price: number;
+    changePct: number;
+    ma20: number | null;
+    ma50: number | null;
+    rsi: number | null;
+    macdHistogram: number | null;
+    bollingerPosition: "upper" | "middle" | "lower" | null;
+    atr: number | null;
+    trend: TrendLabel;
+}
+
+function buildTechnicalRow(ticker: string, name: string, candles: CandleView[]): TechnicalRow | null {
+    if (candles.length < 2) return null;
+    const closes = candles.map((c) => c.close);
+    const engineCandles: Candle[] = candles.map((c) => ({
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+        volume: c.volume,
+    }));
+    const i = closes.length - 1;
+    const price = closes[i]!;
+    const prev = closes[i - 1]!;
+    const ma20 = sma(closes, 20)[i];
+    const ma50 = sma(closes, 50)[i];
+    const rsi14 = rsi(closes, 14)[i];
+    const histogram = macd(closes).histogram[i];
+    const bb = bollinger(closes, 20, 2);
+    const atr14 = atr(engineCandles, 14)[i];
+
+    const aboveMa50 = ma50 != null ? price > ma50 : null;
+    const macdBullish = histogram != null ? histogram > 0 : null;
+    const trend: TrendLabel =
+        aboveMa50 == null || macdBullish == null
+            ? "neutral"
+            : aboveMa50 && macdBullish
+              ? "bullish"
+              : !aboveMa50 && !macdBullish
+                ? "bearish"
+                : "neutral";
+
+    const bollingerPosition =
+        bb.upper[i] == null || bb.lower[i] == null
+            ? null
+            : price > bb.upper[i]!
+              ? "upper"
+              : price < bb.lower[i]!
+                ? "lower"
+                : "middle";
+
+    return {
+        ticker,
+        name,
+        price: round(price),
+        changePct: prev > 0 ? round(((price - prev) / prev) * 100) : 0,
+        ma20: ma20 == null ? null : round(ma20),
+        ma50: ma50 == null ? null : round(ma50),
+        rsi: rsi14 == null ? null : round(rsi14, 1),
+        macdHistogram: histogram == null ? null : round(histogram, 1),
+        bollingerPosition,
+        atr: atr14 == null ? null : round(atr14, 1),
+        trend,
+    };
+}
+
+/** Ringkasan indikator untuk semua saham aktif; fallback ke data contoh. */
+export async function getTechnicalOverview(): Promise<TechnicalRow[]> {
+    const rows = await safe("getTechnicalOverview", () =>
+        prisma.stock.findMany({
+            where: { isActive: true },
+            orderBy: { ticker: "asc" },
+            take: 60,
+            include: { priceBars: { orderBy: { timestamp: "desc" }, take: 120 } },
+        }),
+    );
+
+    if (!rows || rows.length === 0) {
+        return MOCK_QUOTES.map((q) =>
+            buildTechnicalRow(
+                q.ticker,
+                q.name,
+                generateMockCandles(q.price * 0.9, 120, q.price % 100),
+            ),
+        ).filter((row): row is TechnicalRow => row != null);
+    }
+
+    return rows
+        .filter((s) => s.priceBars.length >= 2)
+        .map((s) => buildTechnicalRow(s.ticker, s.name, barsToCandles([...s.priceBars].reverse())))
+        .filter((row): row is TechnicalRow => row != null);
+}
+
+// ---------- Berita ----------
+
+export interface NewsView {
+    id: string;
+    source: string;
+    title: string;
+    url: string;
+    publishedAt: string;
+    aiSummary: string;
+    aiSentiment: "POSITIVE" | "NEUTRAL" | "NEGATIVE";
+    relatedTickers: string[];
+    isDemo: boolean;
+}
+
+function toSentiment(value: unknown): NewsView["aiSentiment"] {
+    return value === "POSITIVE" || value === "NEGATIVE" ? value : "NEUTRAL";
+}
+
+/** Berita dari DB (hasil pipeline RSS + ringkasan AI); fallback ke contoh. */
+export async function getNews(limit = 30, ticker?: string): Promise<NewsView[]> {
+    const rows = await safe("getNews", () =>
+        prisma.news.findMany({
+            where: ticker ? { relatedTickers: { has: ticker.toUpperCase() } } : undefined,
+            orderBy: { publishedAt: "desc" },
+            take: limit,
+        }),
+    );
+
+    if (!rows || rows.length === 0) {
+        return MOCK_NEWS.filter(
+            (n) => !ticker || n.relatedTickers.includes(ticker.toUpperCase()),
+        )
+            .slice(0, limit)
+            .map((n) => ({
+                id: n.id,
+                source: n.source,
+                title: n.title,
+                url: n.url,
+                publishedAt: n.publishedAt,
+                aiSummary: n.aiSummary,
+                aiSentiment: n.aiSentiment,
+                relatedTickers: n.relatedTickers,
+                isDemo: true,
+            }));
+    }
+
+    return rows.map((n) => ({
+        id: n.id,
+        source: n.source,
+        title: n.title,
+        url: n.url,
+        publishedAt: n.publishedAt.toISOString(),
+        aiSummary: n.aiSummary ?? "Ringkasan belum tersedia.",
+        aiSentiment: toSentiment(n.aiSentiment),
+        relatedTickers: n.relatedTickers,
+        isDemo: false,
+    }));
+}
+
+/** Ticker yang punya berita — untuk chip filter di halaman berita. */
+export async function getNewsTickers(): Promise<string[]> {
+    const rows = await safe("getNewsTickers", () =>
+        prisma.news.findMany({ select: { relatedTickers: true }, orderBy: { publishedAt: "desc" }, take: 200 }),
+    );
+    const fromMock = MOCK_NEWS.flatMap((n) => n.relatedTickers);
+    const all = rows && rows.length > 0 ? rows.flatMap((n) => n.relatedTickers) : fromMock;
+    return [...new Set(all)].filter((t) => t !== "IHSG").sort().slice(0, 12);
+}
+
+// ---------- Kalender corporate action ----------
+
+export interface CorporateActionView {
+    id: string;
+    ticker: string;
+    type: string;
+    title: string;
+    cumDate: string;
+    exDate: string;
+    paymentDate: string | null;
+    detail: string | null;
+    daysUntilCumDate: number;
+}
+
+/** Corporate action dari DB; fallback ke data contoh agar kalender tetap terlihat. */
+export async function getCorporateActions(daysAhead = 30): Promise<CorporateActionView[]> {
+    const now = new Date();
+    const until = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000);
+    const rows = await safe("getCorporateActions", () =>
+        prisma.corporateAction.findMany({
+            where: { cumDate: { gte: now, lte: until } },
+            orderBy: { cumDate: "asc" },
+            take: 20,
+        }),
+    );
+
+    if (!rows || rows.length === 0) {
+        return MOCK_CORPORATE_ACTIONS.map((ca) => ({
+            id: ca.id,
+            ticker: ca.ticker,
+            type: ca.type,
+            title: ca.title,
+            cumDate: ca.cumDate,
+            exDate: ca.exDate,
+            paymentDate: ca.paymentDate ?? null,
+            detail: ca.detail,
+            daysUntilCumDate: ca.daysUntilCumDate,
+        }));
+    }
+
+    return rows.map((ca) => ({
+        id: ca.id,
+        ticker: ca.ticker,
+        type: ca.type,
+        title: ca.title,
+        cumDate: ca.cumDate.toISOString().slice(0, 10),
+        exDate: ca.exDate.toISOString().slice(0, 10),
+        paymentDate: ca.paymentDate?.toISOString().slice(0, 10) ?? null,
+        detail: ca.detail,
+        daysUntilCumDate: Math.max(0, Math.ceil((ca.cumDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))),
+    }));
 }
