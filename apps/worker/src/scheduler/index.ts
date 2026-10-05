@@ -17,12 +17,14 @@
 import cron from "node-cron";
 import { prisma } from "@stock-analyst/db";
 import { DEFAULT_WATCHLIST_TICKERS, type StrategyType } from "@stock-analyst/shared";
+import type { Candle } from "@stock-analyst/engine";
 import { marketData, saveLiveQuoteToDb, syncHistoryToDb } from "../services/marketData";
 import { runBrokerSyncPipeline } from "../services/brokerData";
 import { syncNewsToDb } from "../services/newsData";
 import { runCorporateActionSyncPipeline } from "../services/corporateActionData";
 import { isTradingDay } from "../services/marketCalendar";
 import { evaluateStrategyForStock } from "../services/signalEngine";
+import { saveIndicatorSnapshot } from "../services/indicatorSnapshots";
 import { PaperBroker } from "../services/paperBroker";
 import { monitorPositionExits } from "../services/tradeEngine";
 import { DiscordNotifier, processOutbox } from "../bot/notifier";
@@ -37,6 +39,23 @@ async function marketOpenToday(): Promise<boolean> {
     const trading = await isTradingDay(prisma);
     if (!trading) logger.info("hari ini bukan hari bursa — job dilewati");
     return trading;
+}
+
+/** Muat bar terbaru suatu saham sebagai candle ascending (harga + timestamp). */
+async function loadRecentCandles(stockId: string, take: number): Promise<Candle[]> {
+    const bars = await prisma.priceBar.findMany({
+        where: { stockId },
+        orderBy: { timestamp: "desc" },
+        take,
+    });
+    return [...bars].reverse().map((b) => ({
+        open: Number(b.open),
+        high: Number(b.high),
+        low: Number(b.low),
+        close: Number(b.close),
+        volume: Number(b.volume),
+        timestamp: b.timestamp.getTime(),
+    }));
 }
 
 /** Ambil semua saham aktif dari DB (fallback ke default list). */
@@ -79,21 +98,8 @@ async function runSessionEvaluation(sessionType: StrategyType) {
         try {
             // Ambil 120 bar TERBARU (desc) lalu balik ke urutan ascending —
             // kalau pakai asc + take, yang terambil justru 120 bar terlama.
-            const recentBars = await prisma.priceBar.findMany({
-                where: { stockId: stock.id },
-                orderBy: { timestamp: "desc" },
-                take: 120,
-            });
-
-            if (recentBars.length < 20) continue;
-
-            const candles = [...recentBars].reverse().map((b) => ({
-                open: Number(b.open),
-                high: Number(b.high),
-                low: Number(b.low),
-                close: Number(b.close),
-                volume: Number(b.volume),
-            }));
+            const candles = await loadRecentCandles(stock.id, 120);
+            if (candles.length < 20) continue;
 
             for (const strategy of strategies) {
                 if (!strategy.stockIds.includes(stock.ticker)) continue;
@@ -123,6 +129,9 @@ async function runEodPipeline() {
     for (const stock of stocks) {
         try {
             await syncHistoryToDb(prisma, stock.id, stock.yahooSymbol, 260);
+            // Simpan snapshot indikator harian (FR-TA-004) dari bar terbaru.
+            const candles = await loadRecentCandles(stock.id, 120);
+            await saveIndicatorSnapshot(prisma, stock.id, stock.ticker, candles);
         } catch (err) {
             logger.error({ err, ticker: stock.ticker }, "Error sync history di EOD pipeline");
         }

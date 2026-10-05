@@ -11,7 +11,8 @@ import {
 } from "discord.js";
 import { prisma } from "@stock-analyst/db";
 import { marketData } from "../services/marketData";
-import { EMBED_COLORS } from "@stock-analyst/shared";
+import { runScreener } from "../services/screener";
+import { EMBED_COLORS, type ScreenerFilter } from "@stock-analyst/shared";
 import { logger } from "../logger";
 
 export const COMMAND_BUILDERS = [
@@ -37,7 +38,23 @@ export const COMMAND_BUILDERS = [
 
     new SlashCommandBuilder()
         .setName("screener")
-        .setDescription("Jalankan screener (contoh: /screener per:15 pbv:1.5)"),
+        .setDescription("Jalankan screener (mis. per:15 pbv:1.5 atau preset:Nama)")
+        .addStringOption((o) =>
+            o.setName("preset").setDescription("Nama preset tersimpan dari dashboard").setRequired(false),
+        )
+        .addNumberOption((o) => o.setName("per").setDescription("PER maksimum").setMinValue(0))
+        .addNumberOption((o) => o.setName("pbv").setDescription("PBV maksimum").setMinValue(0))
+        .addNumberOption((o) => o.setName("roe").setDescription("ROE minimum (%)").setMinValue(0))
+        .addNumberOption((o) =>
+            o.setName("divyield").setDescription("Dividend yield minimum (%)").setMinValue(0),
+        )
+        .addNumberOption((o) =>
+            o
+                .setName("rsi_max")
+                .setDescription("RSI maksimum (mis. 30 untuk oversold)")
+                .setMinValue(0)
+                .setMaxValue(100),
+        ),
 
     new SlashCommandBuilder()
         .setName("alert")
@@ -105,15 +122,7 @@ export function registerCommands(client: Client) {
                     await handleReport(interaction);
                     break;
                 case "screener":
-                    await interaction.reply({
-                        embeds: [
-                            embed(
-                                "🔍 Screener",
-                                EMBED_COLORS.info,
-                                "Screener penuh tersedia di dashboard web. Contoh filter: PER < 15, PBV < 1.5, ROE > 15%.",
-                            ),
-                        ],
-                    });
+                    await handleScreener(interaction);
                     break;
                 default:
                     await interaction.reply("Perintah belum diimplementasikan.");
@@ -212,6 +221,76 @@ async function handleSignal(interaction: ChatInputCommandInteraction) {
         .join("\n");
     await interaction.reply({
         embeds: [embed(`🚨 Sinyal ${ticker}`, EMBED_COLORS.info, lines)],
+    });
+}
+
+async function handleScreener(interaction: ChatInputCommandInteraction) {
+    const presetName = interaction.options.getString("preset")?.trim();
+    const filters: ScreenerFilter[] = [];
+
+    if (presetName) {
+        const preset = await prisma.screenerPreset.findFirst({
+            where: { name: { equals: presetName, mode: "insensitive" } },
+        });
+        if (!preset) {
+            await interaction.reply({
+                embeds: [
+                    embed(
+                        "🔍 Screener",
+                        EMBED_COLORS.watch,
+                        `Preset "${presetName}" tidak ditemukan. Simpan preset dulu di halaman Screener dashboard.`,
+                    ),
+                ],
+            });
+            return;
+        }
+        filters.push(...((preset.filtersJson ?? []) as unknown as ScreenerFilter[]));
+    }
+
+    // Opsi ad-hoc bisa dipakai sendiri atau menimpa preset.
+    const per = interaction.options.getNumber("per");
+    const pbv = interaction.options.getNumber("pbv");
+    const roe = interaction.options.getNumber("roe");
+    const divYield = interaction.options.getNumber("divyield");
+    const rsiMax = interaction.options.getNumber("rsi_max");
+    if (per != null) filters.push({ field: "per", operator: "lt", value: per });
+    if (pbv != null) filters.push({ field: "pbv", operator: "lt", value: pbv });
+    if (roe != null) filters.push({ field: "roe", operator: "gt", value: roe });
+    if (divYield != null) filters.push({ field: "divYield", operator: "gt", value: divYield });
+    if (rsiMax != null) filters.push({ field: "rsi14", operator: "lt", value: rsiMax });
+
+    if (filters.length === 0) {
+        await interaction.reply({
+            embeds: [
+                embed(
+                    "🔍 Screener",
+                    EMBED_COLORS.info,
+                    "Contoh: `/screener per:15 pbv:1.5` atau `/screener preset:Nama Preset`.\nPreset dibuat & disimpan dari halaman Screener di dashboard.",
+                ),
+            ],
+        });
+        return;
+    }
+
+    await interaction.deferReply();
+    const { rows, scanned } = await runScreener(prisma, filters);
+    const shown = rows.slice(0, 15);
+    const lines = shown.map(
+        (r) =>
+            `**${r.ticker}** · Rp ${r.price.toLocaleString("id-ID")} (${r.changePct >= 0 ? "+" : ""}${r.changePct.toFixed(1)}%) · PER ${r.per > 0 ? r.per.toFixed(1) : "—"} · PBV ${r.pbv > 0 ? r.pbv.toFixed(1) : "—"} · ROE ${r.roe !== 0 ? `${r.roe.toFixed(1)}%` : "—"} · RSI ${r.rsi14.toFixed(0)}`,
+    );
+
+    await interaction.editReply({
+        embeds: [
+            embed(
+                `🔍 Screener — ${rows.length} hasil`,
+                rows.length > 0 ? EMBED_COLORS.buy : EMBED_COLORS.watch,
+                rows.length === 0
+                    ? `Tidak ada saham yang cocok dari ${scanned} saham aktif.`
+                    : lines.join("\n") +
+                      (rows.length > shown.length ? `\n… dan ${rows.length - shown.length} lainnya.` : ""),
+            ),
+        ],
     });
 }
 
