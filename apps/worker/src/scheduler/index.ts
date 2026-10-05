@@ -4,18 +4,24 @@
  * - Sesi Sore (BSJP): tiap 15 menit 14:30–15:50 WIB (PRD §10.1)
  * - EOD pipeline & Swing: 16:00 WIB (setelah bursa tutup 15:30)
  * - Broker summary sync: 16:30 WIB (setelah harga EOD tersimpan)
+ * - Corporate action sync: 17:00 WIB (mengisi tabel yang dipakai reminder)
  * - Corporate Action alerts: 08:30 WIB (H-3 dan H-1 sebelum cum-date)
- * - Quote refresh: tiap 5 menit saat jam bursa
+ * - Quote refresh: tiap 5 menit saat jam bursa (harga live dari provider)
  * - Berita RSS + ringkasan AI: tiap 30 menit (06:00–21:00 WIB)
  * - Outbox notifikasi: tiap 30 detik
+ *
+ * Semua job yang bergantung pada pasar dilewati saat bukan hari bursa
+ * (kalender di tabel `CalendarDay` + env MARKET_HOLIDAYS).
  */
 
 import cron from "node-cron";
 import { prisma } from "@stock-analyst/db";
 import { DEFAULT_WATCHLIST_TICKERS, type StrategyType } from "@stock-analyst/shared";
-import { syncHistoryToDb } from "../services/marketData";
+import { marketData, saveLiveQuoteToDb, syncHistoryToDb } from "../services/marketData";
 import { runBrokerSyncPipeline } from "../services/brokerData";
 import { syncNewsToDb } from "../services/newsData";
+import { runCorporateActionSyncPipeline } from "../services/corporateActionData";
+import { isTradingDay } from "../services/marketCalendar";
 import { evaluateStrategyForStock } from "../services/signalEngine";
 import { PaperBroker } from "../services/paperBroker";
 import { monitorPositionExits } from "../services/tradeEngine";
@@ -25,6 +31,13 @@ import { logger } from "../logger";
 
 const notifier = new DiscordNotifier();
 const broker = new PaperBroker(prisma);
+
+/** true bila hari ini hari bursa; job pasar dilewati saat libur (FR-DATA-005). */
+async function marketOpenToday(): Promise<boolean> {
+    const trading = await isTradingDay(prisma);
+    if (!trading) logger.info("hari ini bukan hari bursa — job dilewati");
+    return trading;
+}
 
 /** Ambil semua saham aktif dari DB (fallback ke default list). */
 async function getActiveStocks() {
@@ -51,6 +64,7 @@ async function getActiveStocks() {
 
 /** Pipeline evaluasi strategi berdasarkan session type (PRD §10.1). */
 async function runSessionEvaluation(sessionType: StrategyType) {
+    if (!(await marketOpenToday())) return;
     logger.info({ sessionType }, `Mulai evaluasi sesi sinyal ${sessionType}`);
     const stocks = await getActiveStocks();
     const strategies = await prisma.strategy.findMany({
@@ -102,6 +116,7 @@ async function runSessionEvaluation(sessionType: StrategyType) {
 
 /** Pipeline EOD: fetch harga → simpan → evaluasi sinyal Swing → notifikasi. */
 async function runEodPipeline() {
+    if (!(await marketOpenToday())) return;
     logger.info("Mulai EOD pipeline & Swing evaluation");
     const stocks = await getActiveStocks();
 
@@ -125,6 +140,7 @@ async function runEodPipeline() {
 
 /** Cek kalender dividen & corporate action untuk notifikasi H-3 dan H-1 (PRD §4.4). */
 async function runCorporateActionAlerts() {
+    if (!(await marketOpenToday())) return;
     logger.info("Memeriksa kalender corporate action (H-3 dan H-1)...");
     const now = new Date();
     const upcoming = await prisma.corporateAction.findMany({
@@ -161,25 +177,27 @@ async function runCorporateActionAlerts() {
     await processOutbox(prisma);
 }
 
-/** Refresh quote & evaluasi alert harga (saat jam bursa). */
+/** Refresh quote (harga baru dari provider) & evaluasi alert harga saat jam bursa. */
 async function runQuoteRefresh() {
+    if (!(await marketOpenToday())) return;
     const stocks = await getActiveStocks();
+    let updated = 0;
+
     for (const stock of stocks) {
         try {
-            const bars = await prisma.priceBar.findMany({
-                where: { stockId: stock.id },
-                orderBy: { timestamp: "desc" },
-                take: 1,
-            });
-            if (bars.length === 0) continue;
-            const last = bars[0]!;
+            // Ambil harga terkini dari provider, lalu simpan sebagai bar hari ini
+            // supaya alert & stop loss memakai harga berjalan, bukan harga EOD.
+            const quote = await marketData.getQuote(stock.yahooSymbol);
+            const price = await saveLiveQuoteToDb(prisma, stock.id, quote);
+            if (price == null) continue;
+            updated++;
+
             const alerts = await prisma.alert.findMany({
                 where: { stockId: stock.id, status: "ACTIVE" },
             });
             for (const alert of alerts) {
                 const cond = alert.conditionJson as { level?: number };
                 const level = cond.level ?? 0;
-                const price = Number(last.close);
                 const triggered =
                     alert.type === "PRICE_ABOVE" ? price >= level : alert.type === "PRICE_BELOW" ? price <= level : false;
                 if (triggered) {
@@ -209,6 +227,8 @@ async function runQuoteRefresh() {
         }
     }
 
+    logger.info({ updated, total: stocks.length }, "quote refresh selesai");
+
     // Pantau stop loss / take profit tiap siklus refresh (jam bursa).
     try {
         const closed = await monitorPositionExits(prisma, broker);
@@ -222,8 +242,16 @@ async function runQuoteRefresh() {
 
 /** Sinkronisasi broker summary & foreign flow untuk semua saham aktif. */
 async function runBrokerSync() {
+    if (!(await marketOpenToday())) return;
     const stocks = await getActiveStocks();
     await runBrokerSyncPipeline(prisma, stocks);
+}
+
+/** Sinkronisasi corporate action (PRD §4.4) — mengisi tabel yang dibaca job reminder. */
+async function runCorporateActionSync() {
+    if (!(await marketOpenToday())) return;
+    const stocks = await getActiveStocks();
+    await runCorporateActionSyncPipeline(prisma, stocks);
 }
 
 /** Sinkronisasi berita RSS + ringkasan/sentimen AI (PRD §4.5). */
@@ -253,6 +281,9 @@ export function startScheduler() {
     // 5. Corporate Action / Dividen reminders (H-3 dan H-1): jam 08:30 WIB
     cron.schedule("30 8 * * 1-5", runCorporateActionAlerts, { timezone: env.BOT_TIMEZONE });
 
+    // 5b. Sinkronisasi corporate action: 17:00 WIB (setelah broker sync)
+    cron.schedule("0 17 * * 1-5", runCorporateActionSync, { timezone: env.BOT_TIMEZONE });
+
     // 6. Quote refresh: tiap 5 menit saat jam bursa (09:00–15:30 WIB, Senin–Jumat)
     cron.schedule("*/5 9-15 * * 1-5", runQuoteRefresh, { timezone: env.BOT_TIMEZONE });
 
@@ -268,6 +299,6 @@ export function startScheduler() {
     });
 
     logger.info(
-        "scheduler aktif (BPJS 09:00–10:30 WIB, BSJP 14:30–15:50 WIB, Swing 16:00 WIB, broker sync 16:30 WIB, berita tiap 30 menit)",
+        "scheduler aktif (BPJS 09:00–10:30 WIB, BSJP 14:30–15:50 WIB, Swing 16:00 WIB, broker sync 16:30 WIB, corporate action 17:00 WIB, berita tiap 30 menit)",
     );
 }
