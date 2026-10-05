@@ -40,6 +40,7 @@ import {
     MOCK_NEWS,
     MOCK_PORTFOLIO,
     MOCK_QUOTES,
+    MOCK_SIGNAL_LOGS,
     MOCK_SIGNALS,
     MOCK_TRADES,
     generateMockCandles,
@@ -906,6 +907,202 @@ export async function getNewsTickers(): Promise<string[]> {
     const fromMock = MOCK_NEWS.flatMap((n) => n.relatedTickers);
     const all = rows && rows.length > 0 ? rows.flatMap((n) => n.relatedTickers) : fromMock;
     return [...new Set(all)].filter((t) => t !== "IHSG").sort().slice(0, 12);
+}
+
+// ---------- Signal Log & performa strategi (PRD §4.6) ----------
+
+export interface SignalLogView {
+    id: string;
+    ticker: string;
+    strategyType: string;
+    direction: string;
+    matchedAt: string;
+    reasons: string[];
+    price: number | null;
+    execution: string;
+    /** PnL dari trade yang tertaut ke sinyal ini (null bila belum dieksekusi). */
+    pnl: number | null;
+    rsi14: number | null;
+    volumeRatio: number | null;
+    isDemo: boolean;
+}
+
+export interface StrategyPerformance {
+    strategyType: string;
+    matches: number;
+    executed: number;
+    closed: number;
+    wins: number;
+    winRate: number;
+    totalPnl: number;
+    avgPnl: number;
+}
+
+export interface RuleFrequency {
+    rule: string;
+    matches: number;
+    wins: number;
+    winRate: number;
+}
+
+interface SignalLogSnapshot {
+    direction?: string;
+    reasons?: string[];
+    price?: number;
+    execution?: string;
+    indicators?: { rsi14?: number | null; volumeRatio?: number | null };
+}
+
+interface LoadedSignalLog {
+    id: string;
+    ticker: string;
+    strategyType: string;
+    matchedAt: Date;
+    snapshot: SignalLogSnapshot;
+    pnl: number | null;
+    tradeStatus: string | null;
+}
+
+/** Ambil SignalLog terbaru + PnL trade yang tertaut (via signalId). */
+async function loadSignalLogs(limit = 500): Promise<LoadedSignalLog[] | null> {
+    const rows = await safe("signalLogs", () =>
+        prisma.signalLog.findMany({ orderBy: { matchedAt: "desc" }, take: limit }),
+    );
+    if (!rows || rows.length === 0) return null;
+
+    const signalIds = rows.map((row) => row.signalId).filter((id): id is string => Boolean(id));
+    const trades = signalIds.length
+        ? await safe("signalLogTrades", () =>
+              prisma.trade.findMany({
+                  where: { signalId: { in: signalIds } },
+                  select: { signalId: true, pnl: true, status: true },
+              }),
+          )
+        : [];
+
+    const tradeBySignal = new Map<string, { pnl: number | null; status: string }>();
+    for (const trade of trades ?? []) {
+        if (!trade.signalId) continue;
+        const existing = tradeBySignal.get(trade.signalId);
+        const pnl = trade.pnl == null ? null : num(trade.pnl);
+        // Satu sinyal bisa punya beberapa trade (masuk + keluar). Yang dipakai
+        // untuk menilai hasil adalah PnL realisasi, dan status paling akhir.
+        const merged: { pnl: number | null; status: string } = {
+            pnl: existing?.pnl == null ? (pnl ?? existing?.pnl ?? null) : existing.pnl + (pnl ?? 0),
+            status: trade.status === "CLOSED" || existing?.status === "CLOSED" ? "CLOSED" : trade.status,
+        };
+        tradeBySignal.set(trade.signalId, merged);
+    }
+
+    return rows.map((row) => {
+        const linked = row.signalId ? tradeBySignal.get(row.signalId) : undefined;
+        return {
+            id: row.id,
+            ticker: row.ticker,
+            strategyType: row.strategyType,
+            matchedAt: row.matchedAt,
+            snapshot: (row.snapshotJson ?? {}) as SignalLogSnapshot,
+            pnl: linked?.pnl ?? null,
+            tradeStatus: linked?.status ?? null,
+        };
+    });
+}
+
+/** Riwayat sinyal (arsip kondisi saat match + hasil eksekusi). */
+export async function getSignalLog(limit = 40): Promise<SignalLogView[]> {
+    const rows = await loadSignalLogs();
+    if (!rows) {
+        return MOCK_SIGNAL_LOGS.slice(0, limit).map((log) => ({
+            id: log.id,
+            ticker: log.ticker,
+            strategyType: log.strategyType,
+            direction: log.direction,
+            matchedAt: log.matchedAt,
+            reasons: log.conditionSnapshot.split(" · "),
+            price: log.price,
+            execution: "not-executed",
+            pnl: null,
+            rsi14: null,
+            volumeRatio: null,
+            isDemo: true,
+        }));
+    }
+
+    return rows.slice(0, limit).map((row) => ({
+        id: row.id,
+        ticker: row.ticker,
+        strategyType: row.strategyType,
+        direction: row.snapshot.direction ?? "WATCH",
+        matchedAt: row.matchedAt.toISOString(),
+        reasons: row.snapshot.reasons ?? [],
+        price: row.snapshot.price ?? null,
+        execution: row.snapshot.execution ?? "not-executed",
+        pnl: row.pnl,
+        rsi14: row.snapshot.indicators?.rsi14 ?? null,
+        volumeRatio: row.snapshot.indicators?.volumeRatio ?? null,
+        isDemo: false,
+    }));
+}
+
+/** Performa per gaya trading: berapa kali match, berapa dieksekusi, win rate, total PnL. */
+export async function getStrategyPerformance(): Promise<StrategyPerformance[]> {
+    const rows = await loadSignalLogs();
+    if (!rows) return [];
+
+    const byStrategy = new Map<string, StrategyPerformance>();
+    for (const row of rows) {
+        const entry = byStrategy.get(row.strategyType) ?? {
+            strategyType: row.strategyType,
+            matches: 0,
+            executed: 0,
+            closed: 0,
+            wins: 0,
+            winRate: 0,
+            totalPnl: 0,
+            avgPnl: 0,
+        };
+        entry.matches++;
+        if (row.tradeStatus != null) entry.executed++;
+        if (row.pnl != null) {
+            entry.closed++;
+            entry.totalPnl += row.pnl;
+            if (row.pnl > 0) entry.wins++;
+        }
+        byStrategy.set(row.strategyType, entry);
+    }
+
+    return [...byStrategy.values()]
+        .map((entry) => ({
+            ...entry,
+            totalPnl: round(entry.totalPnl),
+            avgPnl: entry.closed > 0 ? round(entry.totalPnl / entry.closed) : 0,
+            winRate: entry.closed > 0 ? round((entry.wins / entry.closed) * 100, 1) : 0,
+        }))
+        .sort((a, b) => b.matches - a.matches);
+}
+
+/** Rule mana yang paling sering match (dan seberapa sering menang). */
+export async function getRuleFrequency(): Promise<RuleFrequency[]> {
+    const rows = await loadSignalLogs();
+    if (!rows) return [];
+
+    const byRule = new Map<string, RuleFrequency>();
+    for (const row of rows) {
+        for (const reason of row.snapshot.reasons ?? []) {
+            const entry = byRule.get(reason) ?? { rule: reason, matches: 0, wins: 0, winRate: 0 };
+            entry.matches++;
+            if (row.pnl != null && row.pnl > 0) entry.wins++;
+            byRule.set(reason, entry);
+        }
+    }
+
+    return [...byRule.values()]
+        .map((entry) => ({
+            ...entry,
+            winRate: entry.matches > 0 ? round((entry.wins / entry.matches) * 100, 1) : 0,
+        }))
+        .sort((a, b) => b.matches - a.matches)
+        .slice(0, 8);
 }
 
 // ---------- Kalender corporate action ----------
