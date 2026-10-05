@@ -22,6 +22,7 @@ stock-analyst/
 ## Fitur
 
 - 📊 **Dashboard UI** — watchlist, chart candlestick + indikator (MA/RSI/MACD/Bollinger), screener fundamental, sinyal, monitoring bot. Data dibaca langsung dari Postgres lewat server component, dan otomatis fallback ke data contoh bila DB belum dikonfigurasi
+- 🧾 **SignalLog & evaluasi strategi** — setiap sinyal diarsipkan bersama kondisi saat match (rule yang terpenuhi, RSI, rasio volume, hasil eksekusi). Halaman `/signals` merangkumnya jadi performa per gaya trading (match, eksekusi, win rate, total PnL) dan daftar rule paling sering match
 - 🔍 **Analisis mendalam saham** (`/stock/[ticker]`) — broker summary multi-periode (top net buy/sell per kode broker, streak akumulasi, konsentrasi HHI), chart foreign flow (net harian + kumulatif), support/resistance otomatis, rentang 52 minggu, return 1M/3M/6M/1Y, serta volume & volatilitas
 - 📁 **Halaman Portfolio** — nilai aset, P/L harian & total, alokasi sektor (donut), dan tabel kepemilikan dari posisi paper trading (fallback data contoh saat DB kosong)
 - 🔀 **Halaman Broker Flow** — peringkat net foreign flow seluruh watchlist + broker summary multi-periode & chart akumulasi per saham
@@ -33,7 +34,7 @@ stock-analyst/
 - 🔔 **Notifier multi-channel** — abstraksi `NotificationChannel` dengan routing per tipe notifikasi ke channel `#sinyal`, `#news`, `#admin`, atau default
 - 🔁 **Provider data berlapis** — Yahoo Finance (default) dengan fallback otomatis ke Twelve Data bila `TWELVE_DATA_API_KEY` diisi
 - 🚨 **Signal Engine** — rule-based teknikal + fundamental, anti-look-ahead, dedup sinyal
-- 💰 **Paper Trading** — simulasi eksekusi next-bar dengan risk management (stop loss, take profit, daily loss limit)
+- 💰 **Paper Trading tersambung otomatis** — sinyal BUY membuka posisi (ukuran dari risk per posisi, dibulatkan per lot), sinyal SELL menutupnya, dan stop loss / take profit ditutup otomatis saat refresh quote & EOD. PnL realisasi, saldo, dan posisi tercatat ke database sehingga halaman Portfolio & Bot menampilkan angka nyata
 - 🔌 **Broker-agnostic** — adapter pattern siap untuk integrasi broker live (Fase 3)
 - 🧩 **Provider broker dapat ditukar** — `BrokerSummaryProvider` (PRD 10.3) dengan pilihan `BROKER_PROVIDER=auto|http|sample`; sinkronisasi otomatis tiap hari kerja 16:30 WIB
 
@@ -141,7 +142,7 @@ Perilaku bisa disesuaikan lewat `.commitrc.json` di root:
 | Fase | Isi | Status |
 |---|---|---|
 | **Fase 1** | Data EOD, analisis teknikal, UI dashboard, Discord notifikasi | 🚧 Scaffold selesai |
-| **Fase 2** | Screener fundamental, broker summary & foreign flow, AI/ML sidecar, paper trading penuh | 🚧 Screener, portfolio, technical, broker flow, news + AI summary selesai; ML sidecar & backtest UI menyusul |
+| **Fase 2** | Screener fundamental, broker summary & foreign flow, AI/ML sidecar, paper trading penuh | 🚧 Screener, portfolio, technical, broker flow, news + AI summary, paper trading tersambung, SignalLog selesai; ML sidecar & backtest UI menyusul |
 | **Fase 3** | Auto buy/sell live + integrasi broker | ⏳ |
 
 ## Catatan Penting
@@ -153,6 +154,10 @@ Perilaku bisa disesuaikan lewat `.commitrc.json` di root:
 - **Sumber data broker**: `apps/worker/src/services/brokerData.ts` mendefinisikan `BrokerSummaryProvider` (`getBrokerSummary`/`getForeignFlow`). Set `BROKER_API_URL` (template dengan placeholder `{ticker}`, opsional `{date}`) untuk memakai endpoint JSON sendiri; kalau kosong, worker memakai provider `sample` deterministik. Baris hasil provider `http` disimpan dengan `source = "scraper"`, hasil fallback dengan `source = "sample"`, jadi data sintetis selalu bisa dibedakan.
 - **Channel notifikasi**: atur `DISCORD_SIGNAL_CHANNEL_ID`, `DISCORD_NEWS_CHANNEL_ID`, dan `DISCORD_ADMIN_CHANNEL_ID`. Bila kosong, notifikasi jatuh ke `DISCORD_NOTIFY_CHANNEL_ID`.
 - **Auto trade live**: butuh broker dengan API resmi. Paper trading dulu sampai ada broker terverifikasi.
+- **Mengaktifkan paper trading**: buka **Settings → Mode Bot → PAPER**, lalu **Start Bot**. Mode global ini jadi master switch — ia juga menyinkronkan `mode` semua strategi. Eksekusi hanya jalan bila `killSwitch = false`, `mode = PAPER`, dan `status = RUNNING`; kalau salah satu tidak terpenuhi, sinyal tetap dibuat & dinotifikasi tapi tidak ada order.
+- **Guardrail trading** (`apps/worker/src/services/tradeEngine.ts`): maksimum posisi terbuka, ukuran posisi = (saldo × risk per posisi) ÷ jarak stop loss dibulatkan ke bawah per lot, batas kerugian harian 2% memblokir entry baru, dan tidak ada averaging (satu posisi per saham per strategi). Nilai default ada di `DEFAULT_RISK_PARAMS` dan bisa diubah dari halaman Settings.
+- **Stop loss / take profit** dipantau pada tiap refresh quote (jam bursa) dan di pipeline EOD; posisi yang kena akan ditutup otomatis dengan PnL tercatat plus notifikasi `TRADE_EXECUTED` ke Discord.
+- **SignalLog**: `apps/worker/src/services/signalEngine.ts` menulis satu baris `SignalLog` per sinyal — berisi `reasons`, harga, snapshot indikator (RSI/MA/MACD/rasio volume), dan hasil eksekusi (`filled:buy`, `skipped:kill switch aktif`, dst.). Trade keluar mewarisi `signalId` dari trade masuk sehingga PnL realisasi bisa ditelusuri ke sinyal asalnya — itulah dasar angka win rate di halaman `/signals`. Catatan: menghapus baris `Signal` akan mengosongkan `Trade.signalId` (relasi `onDelete: SetNull`), jadi hindari pemangkasan sinyal kalau ingin riwayat hasil tetap utuh.
 - **Berita & AI**: pipeline RSS menyimpan berita yang menyebut ticker watchlist atau isu pasar (IHSG/BEI) ke tabel `News`; berita watchlist otomatis diantre ke channel `#news`. `NEWS_RSS_URLS` (dipisah koma) menimpa feed default. Semua fitur AI tetap berjalan tanpa `ANTHROPIC_API_KEY` memakai fallback deterministik — key hanya diperlukan untuk ringkasan/jawaban model.
 - **CRUD web**: aksi tulis (watchlist, mode bot, kill switch, risk params) memerlukan `DATABASE_URL`; tanpa itu UI menampilkan pesan mode demo dan tidak menyimpan apa pun. Mode `LIVE` sengaja ditolak sampai integrasi broker tersedia.
 - **Risiko**: trading punya risiko finansial. Gunakan guardrail (risk per posisi 1%, daily loss limit 2%) dan jangan pernah trading dengan uang yang tidak siap hilang.
