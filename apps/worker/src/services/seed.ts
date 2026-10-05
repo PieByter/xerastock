@@ -9,42 +9,14 @@ import type { PrismaClient } from "@stock-analyst/db";
 import { Prisma } from "@stock-analyst/db";
 import {
     DEFAULT_RISK_PARAMS,
+    DEFAULT_STRATEGY_RULES,
     DEFAULT_WATCHLIST_TICKERS,
     STRATEGY_CONFIG,
-    type RuleConfig,
     type StrategyType,
 } from "@stock-analyst/shared";
 import { logger } from "../logger";
 
 export const OWNER_EMAIL = process.env.OWNER_EMAIL ?? "owner@xerastock.local";
-
-/** Rule default per gaya trading (PRD §10.1). Semua rule berbasis crossover/breakout. */
-const STRATEGY_RULES: Record<StrategyType, { entry: RuleConfig[]; exit: RuleConfig[] }> = {
-    BSJP: {
-        entry: [
-            { type: "BOLLINGER_BREAK", params: { period: 20 } },
-            { type: "PRICE_ABOVE_MA", params: { period: 20 } },
-        ],
-        exit: [
-            { type: "RSI_OVERBOUGHT", params: { period: 14, threshold: 70 } },
-            { type: "PRICE_BELOW_MA", params: { period: 20 } },
-        ],
-    },
-    BPJS: {
-        entry: [
-            { type: "MACD_CROSS", params: {} },
-            { type: "BOLLINGER_BREAK", params: { period: 20 } },
-        ],
-        exit: [{ type: "RSI_OVERBOUGHT", params: { period: 14, threshold: 75 } }],
-    },
-    SWING: {
-        entry: [{ type: "MA_CROSS", params: { fastPeriod: 20, slowPeriod: 50 } }],
-        exit: [
-            { type: "PRICE_BELOW_MA", params: { period: 50 } },
-            { type: "RSI_OVERBOUGHT", params: { period: 14, threshold: 70 } },
-        ],
-    },
-};
 
 /** Pastikan user owner ada (single-user) dan kembalikan id-nya. */
 export async function ensureOwner(prisma: PrismaClient): Promise<string> {
@@ -77,7 +49,7 @@ export async function ensureStocks(prisma: PrismaClient, tickers: readonly strin
  */
 export async function ensureStrategies(prisma: PrismaClient, userId: string, tickers: string[]) {
     let created = 0;
-    for (const type of Object.keys(STRATEGY_RULES) as StrategyType[]) {
+    for (const type of Object.keys(DEFAULT_STRATEGY_RULES) as StrategyType[]) {
         const existing = await prisma.strategy.findFirst({
             where: { userId, strategyType: type },
         });
@@ -93,7 +65,7 @@ export async function ensureStrategies(prisma: PrismaClient, userId: string, tic
             continue;
         }
 
-        const rules = STRATEGY_RULES[type];
+        const rules = DEFAULT_STRATEGY_RULES[type];
         await prisma.strategy.create({
             data: {
                 userId,
