@@ -1,6 +1,7 @@
 import { Card, CardHeader, Table, Badge, StatCard } from "@/components/ui";
 import { getBotOverview } from "@/lib/data";
 import { formatIDR, formatDate } from "@/lib/format";
+import BotControls from "./BotControls";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +18,7 @@ export default async function BotPage() {
             Monitoring bot Discord, paper trading, dan auto buy/sell
           </p>
         </div>
-        <div className="flex gap-2">
-          <button className="btn-ghost">Pause</button>
-          <button className="btn-primary">Start Bot</button>
-        </div>
+        <BotControls status={bot.status} killSwitch={bot.killSwitch} />
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
