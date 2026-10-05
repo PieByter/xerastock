@@ -6,6 +6,7 @@
  * - Broker summary sync: 16:30 WIB (setelah harga EOD tersimpan)
  * - Corporate Action alerts: 08:30 WIB (H-3 dan H-1 sebelum cum-date)
  * - Quote refresh: tiap 5 menit saat jam bursa
+ * - Berita RSS + ringkasan AI: tiap 30 menit (06:00–21:00 WIB)
  * - Outbox notifikasi: tiap 30 detik
  */
 
@@ -14,6 +15,7 @@ import { prisma } from "@stock-analyst/db";
 import { DEFAULT_WATCHLIST_TICKERS, type StrategyType } from "@stock-analyst/shared";
 import { syncHistoryToDb } from "../services/marketData";
 import { runBrokerSyncPipeline } from "../services/brokerData";
+import { syncNewsToDb } from "../services/newsData";
 import { evaluateStrategyForStock } from "../services/signalEngine";
 import { DiscordNotifier, processOutbox } from "../bot/notifier";
 import { env } from "../config";
@@ -26,7 +28,11 @@ async function getActiveStocks() {
     const stocks = await prisma.stock.findMany({ where: { isActive: true } });
     if (stocks.length > 0) return stocks;
 
-    // Seed awal jika DB kosong
+    // Jangan seed ulang kalau user sengaja menonaktifkan semua saham.
+    const total = await prisma.stock.count();
+    if (total > 0) return [];
+
+    // Seed awal hanya saat database benar-benar kosong.
     const created = [];
     for (const ticker of DEFAULT_WATCHLIST_TICKERS) {
         created.push(
@@ -54,15 +60,17 @@ async function runSessionEvaluation(sessionType: StrategyType) {
 
     for (const stock of stocks) {
         try {
-            const bars = await prisma.priceBar.findMany({
+            // Ambil 120 bar TERBARU (desc) lalu balik ke urutan ascending —
+            // kalau pakai asc + take, yang terambil justru 120 bar terlama.
+            const recentBars = await prisma.priceBar.findMany({
                 where: { stockId: stock.id },
-                orderBy: { timestamp: "asc" },
+                orderBy: { timestamp: "desc" },
                 take: 120,
             });
 
-            if (bars.length < 20) continue;
+            if (recentBars.length < 20) continue;
 
-            const candles = bars.map((b) => ({
+            const candles = [...recentBars].reverse().map((b) => ({
                 open: Number(b.open),
                 high: Number(b.high),
                 low: Number(b.low),
@@ -199,6 +207,16 @@ async function runBrokerSync() {
     await runBrokerSyncPipeline(prisma, stocks);
 }
 
+/** Sinkronisasi berita RSS + ringkasan/sentimen AI (PRD §4.5). */
+async function runNewsSync() {
+    try {
+        await syncNewsToDb(prisma);
+    } catch (err) {
+        logger.error({ err }, "error saat sinkronisasi berita");
+    }
+    await processOutbox(prisma);
+}
+
 export function startScheduler() {
     // 1. Sesi Pagi (BPJS / Day Trade): tiap 15 menit antara 09:00–10:30 WIB
     cron.schedule("*/15 9,10 * * 1-5", () => runSessionEvaluation("BPJS"), { timezone: env.BOT_TIMEZONE });
@@ -222,10 +240,15 @@ export function startScheduler() {
     // 7. Outbox: proses notifikasi tertunda tiap 30 detik
     cron.schedule("*/30 * * * * *", () => processOutbox(prisma), { timezone: env.BOT_TIMEZONE });
 
-    // 8. Healthcheck log tiap 5 menit
+    // 8. Berita RSS + ringkasan AI: tiap 30 menit (06:00–21:00 WIB, hari kerja)
+    cron.schedule("*/30 6-21 * * 1-5", runNewsSync, { timezone: env.BOT_TIMEZONE });
+
+    // 9. Healthcheck log tiap 5 menit
     cron.schedule("*/5 * * * *", () => {
         logger.info("scheduler healthcheck OK");
     });
 
-    logger.info("scheduler aktif (BPJS 09:00–10:30 WIB, BSJP 14:30–15:50 WIB, Swing 16:00 WIB, broker sync 16:30 WIB)");
+    logger.info(
+        "scheduler aktif (BPJS 09:00–10:30 WIB, BSJP 14:30–15:50 WIB, Swing 16:00 WIB, broker sync 16:30 WIB, berita tiap 30 menit)",
+    );
 }
