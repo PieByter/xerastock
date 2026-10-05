@@ -11,10 +11,15 @@
  *   npm run commit:auto -- --apply      # buat commit-nya
  *   npm run commit:auto -- --staged     # hanya yang sudah di-stage
  *   npm run commit:auto -- --json       # keluaran JSON (untuk tooling lain)
+ *   npm run commit:auto -- --ai         # subjek ditulis Claude (butuh ANTHROPIC_API_KEY)
  *
  * Scope diturunkan otomatis dari daftar `workspaces` di package.json root,
  * tipe ditentukan dari status berkas + isi diff. Override opsional lewat
  * `.commitrc.json` (lihat README).
+ *
+ * Mode `--ai` hanya mengganti teks subjek; pengelompokan berkas tetap
+ * deterministik. Tanpa API key / saat request gagal, subjek deterministik
+ * dipakai sebagai fallback sehingga perintah tidak pernah gagal total.
  */
 
 import { execFileSync } from "node:child_process";
@@ -31,6 +36,7 @@ const getOption = (name) => {
 const apply = hasFlag("apply");
 const stagedOnly = hasFlag("staged");
 const asJson = hasFlag("json");
+const useAi = hasFlag("ai");
 const coAuthor = getOption("co-author") ?? null;
 
 const git = (gitArgs, options = {}) =>
@@ -322,6 +328,104 @@ function bodyFor(group) {
     return lines.join("\n");
 }
 
+// ---------- Subjek dengan AI (opsional, `--ai`) ----------
+
+/** Baca .env root tanpa dependency tambahan — hanya baris KEY=VALUE sederhana. */
+function readEnvFile() {
+    const env = {};
+    if (!existsSync(".env")) return env;
+    for (const line of readFileSync(".env", "utf8").split(/\r?\n/)) {
+        const match = line.match(/^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*)$/);
+        if (!match) continue;
+        env[match[1]] = match[2].trim().replace(/^["']|["']$/g, "");
+    }
+    return env;
+}
+
+const fileEnv = readEnvFile();
+const apiKey = process.env.ANTHROPIC_API_KEY || fileEnv.ANTHROPIC_API_KEY || "";
+const claudeModel = process.env.CLAUDE_MODEL || fileEnv.CLAUDE_MODEL || "claude-sonnet-4-5";
+// Bisa diarahkan ke proxy/gateway sendiri; default ke API resmi Anthropic.
+const claudeBaseUrl = (process.env.ANTHROPIC_BASE_URL || fileEnv.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/+$/, "");
+
+const AI_SYSTEM = [
+    "Kamu penulis pesan commit Git untuk monorepo TypeScript berbahasa Indonesia.",
+    "Balas HANYA satu baris subjek Conventional Commits, tanpa tanda kutip dan tanpa penjelasan.",
+    "Tipe dan scope sudah ditentukan — jangan diubah.",
+    "Ringkasan memakai kata kerja imperatif Bahasa Indonesia (tambah, perbaiki, rapikan, perbarui), maksimal 72 karakter total, tanpa titik di akhir.",
+].join(" ");
+
+/**
+ * Konteks ringkas untuk satu grup. Diff besar dipotong (anggaran karakter)
+ * supaya request tetap di bawah batas ukuran — inilah alasan mode CLI ini
+ * tetap bekerja pada perubahan ribuan baris.
+ */
+function aiContextFor(group, maxChars = 9000) {
+    const parts = [`tipe: ${group.type}`, `scope: ${group.scope ?? "(tanpa scope)"}`, "berkas:"];
+    let budget = maxChars;
+
+    for (const change of group.changes) {
+        parts.push(`- [${STATUS_LABEL[change.status] ?? "ubah"}] ${change.path}`);
+        const excerpt = change.diff.added.filter((line) => line.trim()).slice(0, 40).join("\n");
+        if (!excerpt || budget <= 0) continue;
+        const clipped = excerpt.slice(0, Math.min(1500, budget));
+        budget -= clipped.length;
+        parts.push(`  contoh baris baru:\n${clipped}`);
+    }
+    return parts.join("\n");
+}
+
+/** Minta subjek ke Claude; null bila key tidak ada, gagal, atau hasilnya tidak valid. */
+async function aiSubjectFor(group) {
+    if (!apiKey) return null;
+
+    const prefix = `${group.type}${group.scope ? `(${group.scope})` : ""}: `;
+    try {
+        const response = await fetch(`${claudeBaseUrl}/v1/messages`, {
+            method: "POST",
+            headers: {
+                "content-type": "application/json",
+                "x-api-key": apiKey,
+                "anthropic-version": "2023-06-01",
+            },
+            body: JSON.stringify({
+                model: claudeModel,
+                max_tokens: 120,
+                system: AI_SYSTEM,
+                messages: [
+                    {
+                        role: "user",
+                        content: `${aiContextFor(group)}\n\nTulis subjek commit yang diawali persis dengan "${prefix}".`,
+                    },
+                ],
+            }),
+        });
+
+        if (!response.ok) {
+            console.warn(`⚠️  AI gagal (HTTP ${response.status}) — subjek deterministik dipakai.`);
+            return null;
+        }
+
+        const data = await response.json();
+        const text = (data.content ?? [])
+            .filter((block) => block.type === "text")
+            .map((block) => block.text ?? "")
+            .join(" ")
+            .trim();
+        const subject = (text.split(/\r?\n/)[0] ?? "").replace(/^["'`]+|["'`]+$/g, "").trim();
+
+        // Validasi: harus Conventional Commits dengan tipe/scope yang sama & ≤ 72 karakter.
+        if (!subject.startsWith(prefix) || subject.length > 72 || subject.length <= prefix.length) {
+            console.warn(`⚠️  Subjek AI tidak valid ("${subject}") — subjek deterministik dipakai.`);
+            return null;
+        }
+        return subject;
+    } catch (err) {
+        console.warn(`⚠️  AI error (${err.message}) — subjek deterministik dipakai.`);
+        return null;
+    }
+}
+
 // ---------- Susun grup commit ----------
 
 const skipped = [];
@@ -363,8 +467,14 @@ const ordered = [...groups.values()].sort(
     (a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type) || String(a.scope).localeCompare(String(b.scope)),
 );
 
+if (useAi && !apiKey) {
+    console.warn("⚠️  --ai aktif tapi ANTHROPIC_API_KEY belum di-set — memakai subjek deterministik.\n");
+}
+
 for (const group of ordered) {
     group.subject = subjectFor(group);
+    group.aiSubject = useAi ? await aiSubjectFor(group) : null;
+    if (group.aiSubject) group.subject = group.aiSubject;
     group.body = bodyFor(group);
     group.message = `${group.subject}\n\n${group.body}\n`;
 }
@@ -379,6 +489,7 @@ if (asJson) {
                     type: group.type,
                     scope: group.scope,
                     subject: group.subject,
+                    ai: Boolean(group.aiSubject),
                     message: group.message,
                     files: group.changes.map((change) => change.path),
                 })),
@@ -400,7 +511,7 @@ const total = ordered.reduce((sum, group) => sum + group.changes.length, 0);
 console.log(`${apply ? "MEMBUAT" : "RENCANA"} ${ordered.length} COMMIT (${total} berkas)\n`);
 
 for (const [index, group] of ordered.entries()) {
-    console.log(`${index + 1}) ${group.subject}`);
+    console.log(`${index + 1}) ${group.subject}${group.aiSubject ? "  (AI)" : ""}`);
     for (const change of group.changes) {
         console.log(`   ${change.status === "A" ? "+" : change.status === "D" ? "-" : "~"} ${change.path}`);
     }
@@ -419,10 +530,30 @@ if (!git(["config", "user.name"]).trim()) {
     process.exit(1);
 }
 
+let created = 0;
+const failed = [];
+
 for (const group of ordered) {
-    git(["add", "-A", "--", ...group.changes.map((change) => change.path)]);
-    git(["commit", "-F", "-"], { input: group.message });
-    console.log(`✓ ${group.subject}`);
+    const paths = group.changes.map((change) => change.path);
+    try {
+        git(["add", "-A", "--", ...paths]);
+        // `--only` + pathspec: commit HANYA berkas grup ini. Tanpa ini, `git commit`
+        // ikut menelan semua yang kebetulan sudah ada di index sehingga grup
+        // berikutnya gagal karena tidak ada perubahan tersisa.
+        git(["commit", "--only", "-F", "-", "--", ...paths], { input: group.message });
+        created++;
+        console.log(`✓ ${group.subject}`);
+    } catch (err) {
+        const detail = String(err.stderr ?? err.message ?? "").trim().split("\n")[0];
+        failed.push(`${group.subject} — ${detail}`);
+        console.warn(`✗ ${group.subject} (dilewati)`);
+    }
 }
 
-console.log(`\nSelesai — ${ordered.length} commit dibuat.`);
+console.log(`\nSelesai — ${created}/${ordered.length} commit dibuat.`);
+
+if (failed.length > 0) {
+    console.warn("\nGrup yang gagal:");
+    for (const item of failed) console.warn(` - ${item}`);
+    process.exit(1);
+}
