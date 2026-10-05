@@ -8,6 +8,8 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc -p tsconfig.build.json",
+    "db:seed": "tsx src/scripts/seed.ts",
+    "news:sync": "tsx src/scripts/newsSync.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -15,6 +17,7 @@
     "@stock-analyst/engine": "*",
     "@stock-analyst/shared": "*",
     "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
     "node-cron": "^3.0.3",
     "pino": "^9.3.2",
     "yahoo-finance2": "^2.11.0",
