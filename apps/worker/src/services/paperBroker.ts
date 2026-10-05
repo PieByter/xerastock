@@ -16,12 +16,16 @@ export interface OrderRequest {
     /** harga bar saat sinyal (untuk estimasi). */
     refPrice: number;
     requestId: string;
+    /** sinyal yang memicu order ini (opsional, untuk jejak audit). */
+    signalId?: string;
 }
 
 export interface OrderResult {
     filled: boolean;
     fillPrice: number;
     fee: number;
+    /** PnL realisasi (hanya untuk SELL yang berhasil menutup posisi). */
+    pnl?: number;
     reason?: string;
 }
 
@@ -53,21 +57,65 @@ export class PaperBroker implements BrokerAdapter {
             return { filled: false, fillPrice, fee, reason: "INSUFFICIENT_BALANCE" };
         }
 
+        const position = await this.prisma.position.findUnique({
+            where: {
+                strategyId_stockId_mode: {
+                    strategyId: req.strategyId,
+                    stockId: req.stockId,
+                    mode: "PAPER",
+                },
+            },
+        });
+
+        // Tidak boleh menjual tanpa posisi — mencegah posisi qty negatif.
+        if (req.side === "SELL") {
+            if (!position || position.qty < req.qty) {
+                logger.warn({ ticker: req.ticker }, "tidak ada posisi paper yang bisa dijual");
+                return { filled: false, fillPrice, fee, reason: "NO_POSITION" };
+            }
+        }
+
+        // Trade masuk yang masih terbuka — dipakai untuk menutup statusnya dan
+        // mewariskan signalId supaya hasil (PnL) bisa ditelusuri ke sinyal asal.
+        const openEntries =
+            req.side === "SELL"
+                ? await this.prisma.trade.findMany({
+                      where: { strategyId: req.strategyId, stockId: req.stockId, mode: "PAPER", side: "BUY", status: "OPEN" },
+                      orderBy: { openedAt: "asc" },
+                  })
+                : [];
+        const entrySignalId = openEntries[0]?.signalId ?? null;
+
+        // PnL realisasi dihitung dari harga rata-rata masuk posisi.
+        const avgEntry = position ? Number(position.avgEntry) : fillPrice;
+        const pnl = req.side === "SELL" ? (fillPrice - avgEntry) * req.qty - fee : undefined;
+
         // Simpan trade
         await this.prisma.trade.create({
             data: {
                 strategyId: req.strategyId,
+                signalId: req.signalId ?? entrySignalId,
                 stockId: req.stockId,
                 side: req.side,
                 mode: "PAPER",
                 qty: req.qty,
                 price: fillPrice,
                 fee,
-                status: "OPEN",
+                pnl: pnl ?? null,
+                status: req.side === "SELL" ? "CLOSED" : "OPEN",
+                closedAt: req.side === "SELL" ? new Date() : null,
                 requestId: req.requestId,
-                decisionLogJson: { slippagePct: SLIPPAGE_PCT, feePct: FEE_PCT },
+                decisionLogJson: { slippagePct: SLIPPAGE_PCT, feePct: FEE_PCT, avgEntry },
             },
         });
+
+        // Tutup trade masuk bila posisi benar-benar habis.
+        if (req.side === "SELL" && openEntries.length > 0 && position && position.qty <= req.qty) {
+            await this.prisma.trade.updateMany({
+                where: { id: { in: openEntries.map((trade) => trade.id) } },
+                data: { status: "CLOSED", closedAt: new Date() },
+            });
+        }
 
         // Update saldo & posisi
         const newBalance =
@@ -80,33 +128,45 @@ export class PaperBroker implements BrokerAdapter {
             data: { balance: newBalance },
         });
 
-        await this.prisma.position.upsert({
-            where: {
-                strategyId_stockId_mode: {
+        if (req.side === "BUY") {
+            await this.prisma.position.upsert({
+                where: {
+                    strategyId_stockId_mode: {
+                        strategyId: req.strategyId,
+                        stockId: req.stockId,
+                        mode: "PAPER",
+                    },
+                },
+                create: {
                     strategyId: req.strategyId,
                     stockId: req.stockId,
                     mode: "PAPER",
+                    qty: req.qty,
+                    avgEntry: fillPrice,
+                    currentValue: gross,
+                    unrealizedPnl: 0,
                 },
-            },
-            create: {
-                strategyId: req.strategyId,
-                stockId: req.stockId,
-                mode: "PAPER",
-                qty: req.qty,
-                avgEntry: fillPrice,
-                currentValue: gross,
-                unrealizedPnl: 0,
-            },
-            update: {
-                qty: { increment: req.side === "BUY" ? req.qty : -req.qty },
-            },
-        });
+                update: {
+                    qty: { increment: req.qty },
+                    currentValue: gross,
+                },
+            });
+        } else if (position && position.qty > req.qty) {
+            // Keluar sebagian: sisa posisi tetap terbuka.
+            await this.prisma.position.update({
+                where: { id: position.id },
+                data: { qty: position.qty - req.qty },
+            });
+        } else if (position) {
+            // Posisi habis → hapus supaya hitungan max posisi & portofolio akurat.
+            await this.prisma.position.delete({ where: { id: position.id } });
+        }
 
         logger.info(
-            { ticker: req.ticker, side: req.side, qty: req.qty, fillPrice },
+            { ticker: req.ticker, side: req.side, qty: req.qty, fillPrice, pnl },
             "paper order terisi",
         );
-        return { filled: true, fillPrice, fee };
+        return { filled: true, fillPrice, fee, pnl };
     }
 
     private async getOrCreateAccount(strategyId: string) {

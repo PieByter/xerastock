@@ -17,11 +17,14 @@ import { syncHistoryToDb } from "../services/marketData";
 import { runBrokerSyncPipeline } from "../services/brokerData";
 import { syncNewsToDb } from "../services/newsData";
 import { evaluateStrategyForStock } from "../services/signalEngine";
+import { PaperBroker } from "../services/paperBroker";
+import { monitorPositionExits } from "../services/tradeEngine";
 import { DiscordNotifier, processOutbox } from "../bot/notifier";
 import { env } from "../config";
 import { logger } from "../logger";
 
 const notifier = new DiscordNotifier();
+const broker = new PaperBroker(prisma);
 
 /** Ambil semua saham aktif dari DB (fallback ke default list). */
 async function getActiveStocks() {
@@ -86,6 +89,7 @@ async function runSessionEvaluation(sessionType: StrategyType) {
                     stockId: stock.id,
                     ticker: stock.ticker,
                     candles,
+                    broker,
                 });
             }
         } catch (err) {
@@ -110,6 +114,12 @@ async function runEodPipeline() {
     }
 
     await runSessionEvaluation("SWING");
+
+    // Stop loss / take profit memakai harga EOD yang baru saja disinkronkan.
+    const closed = await monitorPositionExits(prisma, broker);
+    if (closed > 0) logger.info({ closed }, "posisi ditutup otomatis di EOD");
+    await processOutbox(prisma);
+
     logger.info("EOD pipeline & Swing selesai");
 }
 
@@ -198,6 +208,15 @@ async function runQuoteRefresh() {
             logger.error({ err, ticker: stock.ticker }, "error di quote refresh");
         }
     }
+
+    // Pantau stop loss / take profit tiap siklus refresh (jam bursa).
+    try {
+        const closed = await monitorPositionExits(prisma, broker);
+        if (closed > 0) logger.info({ closed }, "posisi ditutup otomatis oleh SL/TP");
+    } catch (err) {
+        logger.error({ err }, "error saat memantau exit posisi");
+    }
+
     await processOutbox(prisma);
 }
 
