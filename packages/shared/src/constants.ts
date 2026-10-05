@@ -1,5 +1,7 @@
 /** Konstanta bersama untuk seluruh aplikasi. */
 
+import type { RuleConfig, StrategyType } from "./types";
+
 export const IDX_TZ = "Asia/Jakarta";
 
 /** Jam bursa IDX (WIB). */
@@ -71,6 +73,37 @@ export const STRATEGY_CONFIG = {
         description: "Kombinasi EMA cross/MACD + akumulasi foreign multi-hari + sentimen berita netral/positif",
     },
 } as const;
+
+/**
+ * Rule default per gaya trading (PRD §10.1) — dipakai seed worker dan mode
+ * demo backtest di web. Semua rule berbasis crossover/breakout.
+ */
+export const DEFAULT_STRATEGY_RULES: Record<StrategyType, { entry: RuleConfig[]; exit: RuleConfig[] }> = {
+    BSJP: {
+        entry: [
+            { type: "BOLLINGER_BREAK", params: { period: 20 } },
+            { type: "PRICE_ABOVE_MA", params: { period: 20 } },
+        ],
+        exit: [
+            { type: "RSI_OVERBOUGHT", params: { period: 14, threshold: 70 } },
+            { type: "PRICE_BELOW_MA", params: { period: 20 } },
+        ],
+    },
+    BPJS: {
+        entry: [
+            { type: "MACD_CROSS", params: {} },
+            { type: "BOLLINGER_BREAK", params: { period: 20 } },
+        ],
+        exit: [{ type: "RSI_OVERBOUGHT", params: { period: 14, threshold: 75 } }],
+    },
+    SWING: {
+        entry: [{ type: "MA_CROSS", params: { fastPeriod: 20, slowPeriod: 50 } }],
+        exit: [
+            { type: "PRICE_BELOW_MA", params: { period: 50 } },
+            { type: "RSI_OVERBOUGHT", params: { period: 14, threshold: 70 } },
+        ],
+    },
+};
 
 /** Channel Notifikasi Discord per PRD §10.2 */
 export const DISCORD_CHANNELS = {
