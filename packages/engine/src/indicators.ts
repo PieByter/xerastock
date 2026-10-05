@@ -9,6 +9,8 @@ export interface Candle {
     low: number;
     close: number;
     volume: number;
+    /** Timestamp epoch ms (opsional) — dipakai backtest untuk tanggal trade. */
+    timestamp?: number;
 }
 
 /** Simple Moving Average. Mengembalikan array dengan null untuk periode awal. */

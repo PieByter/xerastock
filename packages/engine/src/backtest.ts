@@ -13,11 +13,15 @@ export interface BacktestParams {
     stopLossPct: number;
     takeProfitPct: number;
     positionSizePct: number; // % balance per posisi
+    /** Slippage per transaksi dalam % (0 = tanpa slippage, default). */
+    slippagePct?: number;
 }
 
 export interface BacktestTrade {
+    /** Timestamp epoch ms bar masuk (fallback: indeks bar bila candle tanpa timestamp). */
     entryDate: number;
     entryPrice: number;
+    /** Timestamp epoch ms bar keluar (fallback: indeks bar). */
     exitDate: number | null;
     exitPrice: number | null;
     qty: number;
@@ -46,6 +50,7 @@ export function backtest(
     params: BacktestParams,
 ): BacktestResult {
     let balance = params.initialBalance;
+    const slippagePct = params.slippagePct ?? 0;
     let position: { qty: number; entryPrice: number; entryIndex: number } | null = null;
     const trades: BacktestTrade[] = [];
     let peakBalance = balance;
@@ -76,15 +81,17 @@ export function backtest(
             }
 
             if (exitPrice != null) {
-                const gross = position.qty * exitPrice;
+                // Slippage eksekusi jual: harga terisi lebih rendah dari harga sinyal.
+                const filledExit = exitPrice * (1 - slippagePct / 100);
+                const gross = position.qty * filledExit;
                 const fee = gross * (params.feePct / 100);
                 const pnl = gross - position.qty * position.entryPrice - fee;
                 balance += pnl;
                 trades.push({
-                    entryDate: candles[position.entryIndex]!.open,
+                    entryDate: candles[position.entryIndex]!.timestamp ?? position.entryIndex,
                     entryPrice: position.entryPrice,
-                    exitDate: bar.open,
-                    exitPrice,
+                    exitDate: bar.timestamp ?? i,
+                    exitPrice: filledExit,
                     qty: position.qty,
                     pnl,
                     pnlPct: (pnl / (position.qty * position.entryPrice)) * 100,
@@ -101,9 +108,11 @@ export function backtest(
             const sig = evaluateRules(entryRules, exitRules, { candles: candles.slice(0, i) });
             if (sig?.direction === "BUY") {
                 const alloc = balance * (params.positionSizePct / 100);
-                const qty = Math.floor(alloc / bar.close);
+                // Slippage eksekusi beli: harga terisi lebih tinggi dari harga sinyal.
+                const entryPrice = bar.close * (1 + slippagePct / 100);
+                const qty = Math.floor(alloc / entryPrice);
                 if (qty > 0) {
-                    position = { qty, entryPrice: bar.close, entryIndex: i };
+                    position = { qty, entryPrice, entryIndex: i };
                 }
             }
         }
@@ -112,15 +121,16 @@ export function backtest(
     // Tutup posisi terbuka di akhir
     if (position) {
         const last = candles[candles.length - 1]!;
-        const gross = position.qty * last.close;
+        const filledExit = last.close * (1 - slippagePct / 100);
+        const gross = position.qty * filledExit;
         const fee = gross * (params.feePct / 100);
         const pnl = gross - position.qty * position.entryPrice - fee;
         balance += pnl;
         trades.push({
-            entryDate: candles[position.entryIndex]!.open,
+            entryDate: candles[position.entryIndex]!.timestamp ?? position.entryIndex,
             entryPrice: position.entryPrice,
-            exitDate: last.open,
-            exitPrice: last.close,
+            exitDate: last.timestamp ?? candles.length - 1,
+            exitPrice: filledExit,
             qty: position.qty,
             pnl,
             pnlPct: (pnl / (position.qty * position.entryPrice)) * 100,
