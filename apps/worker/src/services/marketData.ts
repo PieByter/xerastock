@@ -237,3 +237,58 @@ export async function syncHistoryToDb(
     }
     return saved;
 }
+
+/** Awal hari bursa (WIB) sebagai tanggal bar intraday. */
+export function sessionDate(now = new Date()): Date {
+    const wib = new Date(now.toLocaleString("en-US", { timeZone: env.BOT_TIMEZONE }));
+    return new Date(Date.UTC(wib.getFullYear(), wib.getMonth(), wib.getDate()));
+}
+
+/**
+ * Simpan harga terkini sebagai bar hari ini (bar "berjalan").
+ *
+ * High/low diperluas dari nilai tersimpan, sedangkan open dibiarkan apa adanya
+ * supaya bar tetap konsisten saat EOD resmi datang dan menimpanya. Ini yang
+ * membuat stop loss / take profit dan alert harga bereaksi intraday, bukan
+ * hanya sekali sehari saat data EOD masuk.
+ */
+export async function saveLiveQuoteToDb(
+    prisma: import("@stock-analyst/db").PrismaClient,
+    stockId: string,
+    quote: ProviderQuote,
+): Promise<number | null> {
+    if (!Number.isFinite(quote.price) || quote.price <= 0) return null;
+
+    const timestamp = sessionDate();
+    const volume = BigInt(Math.max(0, Math.round(quote.volume)));
+    const existing = await prisma.priceBar.findUnique({
+        where: { stockId_timestamp: { stockId, timestamp } },
+    });
+
+    const price = quote.price;
+    const high = existing ? Math.max(Number(existing.high), price) : price;
+    const low = existing ? Math.min(Number(existing.low), price) : price;
+
+    await prisma.priceBar.upsert({
+        where: { stockId_timestamp: { stockId, timestamp } },
+        create: {
+            stockId,
+            timestamp,
+            open: price,
+            high,
+            low,
+            close: price,
+            adjClose: price,
+            volume,
+            source: `${marketData.name}:live`,
+        },
+        update: {
+            high,
+            low,
+            close: price,
+            adjClose: price,
+            volume: volume > 0n ? volume : undefined,
+        },
+    });
+    return price;
+}

@@ -8,6 +8,7 @@ import { prisma } from "@stock-analyst/db";
 import { startBot } from "./bot/client";
 import { startScheduler } from "./scheduler";
 import { ensureSeedData } from "./services/seed";
+import { syncCalendarFromEnv } from "./services/marketCalendar";
 import { logger } from "./logger";
 
 async function main() {
@@ -22,6 +23,13 @@ async function main() {
         await ensureSeedData(prisma);
     } catch (err) {
         logger.error({ err }, "seed data awal gagal — worker tetap lanjut");
+    }
+
+    // Kalender bursa: libur dari env MARKET_HOLIDAYS (idempoten)
+    try {
+        await syncCalendarFromEnv(prisma);
+    } catch (err) {
+        logger.error({ err }, "sinkronisasi kalender bursa gagal — worker tetap lanjut");
     }
 
     // Pastikan BotConfig ada

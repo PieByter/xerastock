@@ -21,7 +21,6 @@ const envSchema = z.object({
     DISCORD_WEBHOOK_NEWS: z.string().optional(),
     TELEGRAM_BOT_TOKEN: z.string().optional(),
     TELEGRAM_CHAT_ID: z.string().optional(),
-    REDIS_URL: z.string().optional(),
     BOT_MODE: z.enum(["SIGNAL_ONLY", "PAPER", "LIVE"]).default("SIGNAL_ONLY"),
     BOT_TIMEZONE: z.string().default("Asia/Jakarta"),
     LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
@@ -40,6 +39,17 @@ const envSchema = z.object({
     BROKER_SYNC_DAYS: z.coerce.number().int().min(1).max(60).default(10),
     // Berita (PRD §4.5) — daftar URL RSS dipisah koma; kosong = pakai feed default.
     NEWS_RSS_URLS: z.string().optional(),
+    // Corporate action (PRD §4.4) — auto = http kalau URL diisi, kalau tidak pakai contoh.
+    CORPORATE_ACTION_PROVIDER: z.enum(["auto", "http", "sample"]).default("auto"),
+    CORPORATE_ACTION_API_URL: z
+        .string()
+        .refine((value) => /^https?:\/\/\S+$/i.test(value) && value.includes("{ticker}"), {
+            message: "CORPORATE_ACTION_API_URL harus URL http(s) dan memuat placeholder {ticker}",
+        })
+        .optional(),
+    CORPORATE_ACTION_API_KEY: z.string().optional(),
+    // Kalender bursa (FR-DATA-005) — daftar libur YYYY-MM-DD dipisah koma.
+    MARKET_HOLIDAYS: z.string().optional(),
     // AI opsional: tanpa key, ringkasan berita & asisten memakai fallback deterministik.
     ANTHROPIC_API_KEY: z.string().optional(),
     CLAUDE_MODEL: z.string().optional(),
