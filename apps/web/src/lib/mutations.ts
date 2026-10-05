@@ -137,10 +137,19 @@ export async function updateBotSettings(input: {
             await prisma.botConfig.create({ data: { mode: input.mode ?? "SIGNAL_ONLY", status: input.status ?? "STOPPED", killSwitch: input.killSwitch ?? false } });
         }
 
+        // Sinkronkan mode strategi dengan mode global supaya eksekusi paper
+        // trading (trade engine) ikut aktif/mati bersamaan.
+        let syncedStrategies = 0;
+        if (input.mode === "SIGNAL_ONLY" || input.mode === "PAPER") {
+            const result = await prisma.strategy.updateMany({ data: { mode: input.mode } });
+            syncedStrategies = result.count;
+        }
+
         const label = [
             input.mode ? `mode ${input.mode}` : null,
             input.status ? `status ${input.status}` : null,
             input.killSwitch != null ? `kill switch ${input.killSwitch ? "AKTIF" : "nonaktif"}` : null,
+            syncedStrategies > 0 ? `${syncedStrategies} strategi disinkronkan` : null,
         ]
             .filter(Boolean)
             .join(" · ");
