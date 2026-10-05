@@ -38,6 +38,11 @@ const envSchema = z.object({
         .optional(),
     BROKER_API_KEY: z.string().optional(),
     BROKER_SYNC_DAYS: z.coerce.number().int().min(1).max(60).default(10),
+    // Berita (PRD §4.5) — daftar URL RSS dipisah koma; kosong = pakai feed default.
+    NEWS_RSS_URLS: z.string().optional(),
+    // AI opsional: tanpa key, ringkasan berita & asisten memakai fallback deterministik.
+    ANTHROPIC_API_KEY: z.string().optional(),
+    CLAUDE_MODEL: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

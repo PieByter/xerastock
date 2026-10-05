@@ -5,7 +5,7 @@
 
 import type { PrismaClient } from "@stock-analyst/db";
 import { evaluateRules, type Candle } from "@stock-analyst/engine";
-import { SIGNAL_DEDUP_WINDOW_MS } from "@stock-analyst/shared";
+import { EMBED_COLORS, SIGNAL_DEDUP_WINDOW_MS, STRATEGY_CONFIG, type NotificationPayload, type StrategyType } from "@stock-analyst/shared";
 import { logger } from "../logger";
 
 interface EvaluateOptions {
@@ -51,10 +51,12 @@ export async function evaluateStrategyForStock(opts: EvaluateOptions): Promise<b
     }
 
     const lastBar = candles[candles.length - 1]!;
+    const strategyType = (strategy.strategyType ?? "SWING") as StrategyType;
     const signal = await prisma.signal.create({
         data: {
             stockId,
             strategyId,
+            strategyType,
             source: "TECHNICAL",
             direction: result.direction,
             reasonJson: result.reasons,
@@ -64,20 +66,29 @@ export async function evaluateStrategyForStock(opts: EvaluateOptions): Promise<b
         },
     });
 
-    // Outbox notifikasi (reliability NFR-REL-06)
+    // Outbox notifikasi (reliability NFR-REL-06). Payload memakai kontrak
+    // NotificationPayload supaya siap dikirim langsung oleh processOutbox.
+    const strat = STRATEGY_CONFIG[strategyType];
+    const payload: NotificationPayload = {
+        type: "SIGNAL",
+        title: `🚨 Sinyal ${strat ? strat.shortName : strategyType} — ${ticker}`,
+        description: result.reasons.join(" · "),
+        color: strat ? parseInt(strat.hexColor.replace("#", ""), 16) : EMBED_COLORS.info,
+        fields: [
+            { name: "Ticker", value: ticker, inline: true },
+            { name: "Arah", value: result.direction, inline: true },
+            { name: "Harga", value: `Rp ${lastBar.close.toLocaleString("id-ID")}`, inline: true },
+            { name: "Kekuatan", value: `${Math.round(result.strength * 100)}%`, inline: true },
+        ],
+    };
+
     await prisma.alertEvent.create({
         data: {
             signalId: signal.id,
             type: "SIGNAL",
             sentTo: "discord",
             status: "QUEUED",
-            payloadJson: {
-                ticker,
-                direction: result.direction,
-                reasons: result.reasons,
-                price: lastBar.close,
-                strength: result.strength,
-            },
+            payloadJson: JSON.parse(JSON.stringify(payload)),
         },
     });
 

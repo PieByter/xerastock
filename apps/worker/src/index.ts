@@ -7,6 +7,7 @@ import "dotenv/config";
 import { prisma } from "@stock-analyst/db";
 import { startBot } from "./bot/client";
 import { startScheduler } from "./scheduler";
+import { ensureSeedData } from "./services/seed";
 import { logger } from "./logger";
 
 async function main() {
@@ -15,6 +16,13 @@ async function main() {
     // Verifikasi koneksi DB
     await prisma.$connect();
     logger.info("koneksi database OK");
+
+    // Seed user, watchlist, saham, dan strategi default (idempoten)
+    try {
+        await ensureSeedData(prisma);
+    } catch (err) {
+        logger.error({ err }, "seed data awal gagal — worker tetap lanjut");
+    }
 
     // Pastikan BotConfig ada
     const config = await prisma.botConfig.findFirst();
