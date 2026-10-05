@@ -21,20 +21,21 @@ stock-analyst/
 
 ## Fitur
 
-- 📊 **Dashboard UI** — watchlist, chart candlestick + indikator (MA/RSI/MACD/Bollinger), screener fundamental, sinyal, monitoring bot. Data dibaca langsung dari Postgres lewat server component, dan otomatis fallback ke data contoh bila DB belum dikonfigurasi
+- 📊 **Dashboard UI** — watchlist, chart candlestick + indikator (MA/RSI/MACD/Bollinger), screener fundamental + preset tersimpan, sinyal, monitoring bot. Data dibaca langsung dari Postgres lewat server component, dan otomatis fallback ke data contoh bila DB belum dikonfigurasi
 - 🧾 **SignalLog & evaluasi strategi** — setiap sinyal diarsipkan bersama kondisi saat match (rule yang terpenuhi, RSI, rasio volume, hasil eksekusi). Halaman `/signals` merangkumnya jadi performa per gaya trading (match, eksekusi, win rate, total PnL) dan daftar rule paling sering match
 - 🔍 **Analisis mendalam saham** (`/stock/[ticker]`) — broker summary multi-periode (top net buy/sell per kode broker, streak akumulasi, konsentrasi HHI), chart foreign flow (net harian + kumulatif), support/resistance otomatis, rentang 52 minggu, return 1M/3M/6M/1Y, serta volume & volatilitas
-- 📁 **Halaman Portfolio** — nilai aset, P/L harian & total, alokasi sektor (donut), dan tabel kepemilikan dari posisi paper trading (fallback data contoh saat DB kosong)
+- 📁 **Halaman Portfolio** — nilai aset, kurva performa (equity) + max/current drawdown, P/L harian & total, alokasi sektor (donut), dan tabel kepemilikan dari posisi paper trading (fallback data contoh saat DB kosong)
 - 🔀 **Halaman Broker Flow** — peringkat net foreign flow seluruh watchlist + broker summary multi-periode & chart akumulasi per saham
 - 📈 **Halaman Technical Analysis** — ringkasan MA20/MA50, RSI, MACD, Bollinger, dan ATR seluruh saham dengan filter tren
 - 📰 **News feed + ringkasan AI** — agregasi RSS otomatis (Kontan/CNBC/Bisnis atau feed sendiri via `NEWS_RSS_URLS`), ringkasan 1-2 kalimat & sentimen otomatis, plus kalender corporate action
 - ✍️ **CRUD dari web** — tambah/hapus watchlist, mode bot, kill switch, dan risk params tersimpan ke database lewat server actions
 - 🌊 **Net foreign flow** — kolom net asing di watchlist, daftar "Top Net Buy / Net Sell" di dashboard, dan agregat net asing per saham di halaman detail
-- 🤖 **Bot Discord** — notifikasi real-time ke HP, 10 slash commands (`/watch`, `/price`, `/signal`, `/alert`, `/status`, `/start`, `/stop`, dll)
+- 🤖 **Bot Discord** — notifikasi real-time ke HP, 10 slash commands (`/watch`, `/price`, `/signal`, `/screener`, `/alert`, `/status`, `/start`, `/stop`, dll)
 - 🔔 **Notifier multi-channel** — abstraksi `NotificationChannel` dengan routing per tipe notifikasi ke channel `#sinyal`, `#news`, `#admin`, atau default
 - 🔁 **Provider data berlapis** — Yahoo Finance (default) dengan fallback otomatis ke Twelve Data bila `TWELVE_DATA_API_KEY` diisi
 - 📅 **Kalender bursa & corporate action** — hari libur dari `MARKET_HOLIDAYS` disimpan ke tabel `CalendarDay` dan job pasar otomatis dilewati; aksi korporasi ditarik tiap hari kerja 17:00 WIB (endpoint sendiri atau data contoh) sehingga reminder H-3/H-1 benar-benar terkirim
 - 🚨 **Signal Engine** — rule-based teknikal + fundamental, anti-look-ahead, dedup sinyal
+- 🧪 **Backtest strategi** — halaman `/backtest` menguji strategi terhadap bar historis dari DB (fallback data contoh) dengan biaya transaksi, slippage, stop loss/take profit, dan ukuran posisi; sinyal dieksekusi next-bar (anti-look-ahead) sebagai dasar evaluasi profit factor & win rate
 - 💹 **Quote live intraday** — harga terkini ditarik dari provider tiap 5 menit jam bursa dan disimpan sebagai bar hari ini (high/low diperluas, open tetap), sehingga stop loss, take profit, dan alert harga bereaksi intraday — bukan hanya saat EOD
 - 🔐 **Login dashboard (opsional)** — set `DASHBOARD_PASSWORD` untuk mengunci seluruh halaman; cookie sesi httpOnly berisi hash password, plus guard di semua aksi tulis
 - 💰 **Paper Trading tersambung otomatis** — sinyal BUY membuka posisi (ukuran dari risk per posisi, dibulatkan per lot), sinyal SELL menutupnya, dan stop loss / take profit ditutup otomatis saat refresh quote & EOD. PnL realisasi, saldo, dan posisi tercatat ke database sehingga halaman Portfolio & Bot menampilkan angka nyata
@@ -145,7 +146,7 @@ Perilaku bisa disesuaikan lewat `.commitrc.json` di root:
 | Fase | Isi | Status |
 |---|---|---|
 | **Fase 1** | Data EOD, analisis teknikal, UI dashboard, Discord notifikasi | ✅ Selesai (termasuk quote live intraday & kalender bursa) |
-| **Fase 2** | Screener fundamental, broker summary & foreign flow, AI/ML sidecar, paper trading penuh | 🚧 Screener, portfolio, technical, broker flow, news + AI summary, paper trading tersambung, SignalLog, corporate action selesai; ML sidecar & backtest UI menyusul |
+| **Fase 2** | Screener fundamental, broker summary & foreign flow, AI/ML sidecar, paper trading penuh | 🚧 Screener (+ preset & `/screener`), portfolio (+ kurva performa & drawdown), technical, broker flow, news + AI summary, paper trading tersambung, SignalLog, corporate action, snapshot indikator harian, dan backtest UI selesai; ML sidecar menyusul |
 | **Fase 3** | Auto buy/sell live + integrasi broker | ⏳ |
 
 ## Catatan Penting
@@ -166,6 +167,10 @@ Perilaku bisa disesuaikan lewat `.commitrc.json` di root:
 - **Guardrail trading** (`apps/worker/src/services/tradeEngine.ts`): maksimum posisi terbuka, ukuran posisi = (saldo × risk per posisi) ÷ jarak stop loss dibulatkan ke bawah per lot, batas kerugian harian 2% memblokir entry baru, dan tidak ada averaging (satu posisi per saham per strategi). Nilai default ada di `DEFAULT_RISK_PARAMS` dan bisa diubah dari halaman Settings.
 - **Stop loss / take profit** dipantau pada tiap refresh quote (jam bursa) dan di pipeline EOD; posisi yang kena akan ditutup otomatis dengan PnL tercatat plus notifikasi `TRADE_EXECUTED` ke Discord.
 - **SignalLog**: `apps/worker/src/services/signalEngine.ts` menulis satu baris `SignalLog` per sinyal — berisi `reasons`, harga, snapshot indikator (RSI/MA/MACD/rasio volume), dan hasil eksekusi (`filled:buy`, `skipped:kill switch aktif`, dst.). Trade keluar mewarisi `signalId` dari trade masuk sehingga PnL realisasi bisa ditelusuri ke sinyal asalnya — itulah dasar angka win rate di halaman `/signals`. Catatan: menghapus baris `Signal` akan mengosongkan `Trade.signalId` (relasi `onDelete: SetNull`), jadi hindari pemangkasan sinyal kalau ingin riwayat hasil tetap utuh.
+- **Backtest**: halaman `/backtest` menjalankan `backtest()` engine terhadap bar historis dari DB (fallback data contoh deterministik saat DB kosong/bar kurang). Parameter saldo awal, biaya, slippage, stop loss, take profit, dan ukuran posisi bisa diatur; sinyal dieksekusi di bar berikutnya (anti-look-ahead). Hasil bukan jaminan performa masa depan.
+- **Preset screener**: filter di halaman `/screener` disimpan ke tabel `ScreenerPreset` (upsert per nama) dan bisa diterapkan ulang dari dashboard atau dijalankan via `/screener preset:Nama` di Discord. Filter ad-hoc Discord: `per`, `pbv` (maksimum), `roe`, `divyield` (minimum %), `rsi_max`.
+- **Snapshot indikator**: pipeline EOD menyimpan `IndicatorSnapshot` (timeframe 1D) per saham — nilai terakhir SMA20/50, RSI14, MACD, Bollinger, ATR14, dan rasio volume dari 120 bar terbaru (FR-TA-004), idempoten per tanggal bursa.
+- **Monitoring drawdown**: halaman `/portfolio` menampilkan kurva performa dari PnL trade paper tertutup plus **max drawdown** & drawdown saat ini (dihitung `drawdownStats` di engine; fallback data contoh saat DB kosong).
 - **Berita & AI**: pipeline RSS menyimpan berita yang menyebut ticker watchlist atau isu pasar (IHSG/BEI) ke tabel `News`; berita watchlist otomatis diantre ke channel `#news`. `NEWS_RSS_URLS` (dipisah koma) menimpa feed default. Semua fitur AI tetap berjalan tanpa `ANTHROPIC_API_KEY` memakai fallback deterministik — key hanya diperlukan untuk ringkasan/jawaban model.
 - **CRUD web**: aksi tulis (watchlist, mode bot, kill switch, risk params) memerlukan `DATABASE_URL`; tanpa itu UI menampilkan pesan mode demo dan tidak menyimpan apa pun. Mode `LIVE` sengaja ditolak sampai integrasi broker tersedia.
 - **Risiko**: trading punya risiko finansial. Gunakan guardrail (risk per posisi 1%, daily loss limit 2%) dan jangan pernah trading dengan uang yang tidak siap hilang.
