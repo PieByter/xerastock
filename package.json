@@ -17,9 +17,11 @@
     "db:generate": "npm run db:generate --workspace @stock-analyst/db",
     "db:migrate": "npm run db:migrate --workspace @stock-analyst/db",
     "db:push": "npm run db:push --workspace @stock-analyst/db",
+    "db:seed": "npm run db:seed --workspace @stock-analyst/worker",
     "db:studio": "npm run db:studio --workspace @stock-analyst/db",
     "commit:auto": "node scripts/auto-commit.mjs",
-    "commit:auto:apply": "node scripts/auto-commit.mjs --apply"
+    "commit:auto:apply": "node scripts/auto-commit.mjs --apply",
+    "news:sync": "npm run news:sync --workspace @stock-analyst/worker"
   },
   "engines": {
     "node": ">=20.0.0"
