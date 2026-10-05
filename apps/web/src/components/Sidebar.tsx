@@ -16,8 +16,10 @@ import {
     Settings,
     ChevronLeft,
     ChevronRight,
+    LogOut,
     TrendingUp,
 } from "lucide-react";
+import { logoutAction } from "@/app/login/actions";
 
 const NAV_ITEMS = [
     { href: "/", label: "Overview", icon: LayoutDashboard },
@@ -113,10 +115,28 @@ export default function Sidebar() {
                         <span>Discord Bot</span>
                         <span className="text-cyan-400 font-mono">4 channels</span>
                     </div>
+                    <form action={logoutAction} className="mt-2">
+                        <button
+                            type="submit"
+                            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border px-2 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                            <LogOut className="h-3 w-3" />
+                            Keluar
+                        </button>
+                    </form>
                 </div>
             ) : (
-                <div className="mt-auto flex justify-center py-2" title="Worker Engine: Online">
-                    <span className="h-2.5 w-2.5 rounded-full bg-success animate-pulse" />
+                <div className="mt-auto flex flex-col items-center gap-2 py-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-success animate-pulse" title="Worker Engine: Online" />
+                    <form action={logoutAction}>
+                        <button
+                            type="submit"
+                            title="Keluar"
+                            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                            <LogOut className="h-4 w-4" />
+                        </button>
+                    </form>
                 </div>
             )}
         </aside>

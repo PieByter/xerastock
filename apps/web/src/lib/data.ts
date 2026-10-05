@@ -352,12 +352,21 @@ export async function getTrades(limit = 20): Promise<TradeView[]> {
 }
 
 export async function getBotOverview(): Promise<BotOverview> {
-    const [config, account, positions, trades] = await Promise.all([
+    const [config, account, positions, trades, strategy] = await Promise.all([
         safe("botConfig", () => prisma.botConfig.findFirst()),
         safe("paperAccount", () => prisma.paperAccount.findFirst({ orderBy: { updatedAt: "desc" } })),
         safe("positions", () => prisma.position.findMany({ where: { mode: "PAPER" } })),
         getTrades(10),
+        // Risk params disimpan per strategi (ditulis dari halaman Settings).
+        safe("botStrategy", () =>
+            prisma.strategy.findFirst({ where: { isActive: true }, orderBy: { updatedAt: "desc" } }),
+        ),
     ]);
+
+    const risk = {
+        ...DEFAULT_RISK_PARAMS,
+        ...((strategy?.riskParamsJson ?? {}) as Partial<typeof DEFAULT_RISK_PARAMS>),
+    };
 
     return {
         mode: config?.mode ?? "SIGNAL_ONLY",
@@ -368,11 +377,11 @@ export async function getBotOverview(): Promise<BotOverview> {
         openPositions: positions?.length ?? 0,
         trades,
         risk: {
-            stopLoss: DEFAULT_RISK_PARAMS.stopLossPct,
-            takeProfit: DEFAULT_RISK_PARAMS.takeProfitPct,
-            riskPerPosition: DEFAULT_RISK_PARAMS.riskPerPositionPct,
-            dailyLossLimit: DEFAULT_RISK_PARAMS.dailyLossLimitPct,
-            maxPositions: DEFAULT_RISK_PARAMS.maxPositions,
+            stopLoss: risk.stopLossPct,
+            takeProfit: risk.takeProfitPct,
+            riskPerPosition: risk.riskPerPositionPct,
+            dailyLossLimit: risk.dailyLossLimitPct,
+            maxPositions: risk.maxPositions,
         },
     };
 }
@@ -655,7 +664,7 @@ function mockPortfolio(): PortfolioView {
 
 /** Portofolio dari posisi paper trading di DB; fallback ke data contoh. */
 export async function getPortfolio(): Promise<PortfolioView> {
-    const [account, positions] = await Promise.all([
+    const [account, positions, closedTrades] = await Promise.all([
         safe("portfolioAccount", () => prisma.paperAccount.findFirst({ orderBy: { updatedAt: "desc" } })),
         safe("portfolioPositions", () =>
             prisma.position.findMany({
@@ -665,6 +674,13 @@ export async function getPortfolio(): Promise<PortfolioView> {
                         include: { priceBars: { orderBy: { timestamp: "desc" }, take: 2 } },
                     },
                 },
+            }),
+        ),
+        safe("portfolioClosedTrades", () =>
+            prisma.trade.findMany({
+                where: { mode: "PAPER", status: "CLOSED", pnl: { not: null }, closedAt: { not: null } },
+                orderBy: { closedAt: "asc" },
+                select: { closedAt: true, pnl: true },
             }),
         ),
     ]);
@@ -725,6 +741,22 @@ export async function getPortfolio(): Promise<PortfolioView> {
             color: SECTOR_COLORS[i % SECTOR_COLORS.length]!,
         }));
 
+    // Equity curve dari riwayat trade tertutup: mulai dari modal awal, lalu
+    // tambahkan PnL realisasi tiap trade, ditutup dengan nilai portofolio kini.
+    const performance: { date: string; value: number }[] = [];
+    const closed = closedTrades ?? [];
+    if (closed.length > 0) {
+        const initial = account ? num(account.initialBalance) : 0;
+        const dayOf = (value: Date | null) => (value ? value.toISOString().slice(0, 10) : "");
+        let running = initial;
+        performance.push({ date: dayOf(closed[0]!.closedAt), value: round(initial) });
+        for (const trade of closed) {
+            running += num(trade.pnl);
+            performance.push({ date: dayOf(trade.closedAt), value: round(running) });
+        }
+        performance.push({ date: dayOf(new Date()), value: round(totalValue) });
+    }
+
     return {
         totalValue: round(totalValue),
         totalInvested: round(totalInvested),
@@ -735,7 +767,7 @@ export async function getPortfolio(): Promise<PortfolioView> {
         cashBalance: round(cashBalance),
         holdings: holdings.sort((a, b) => b.marketValue - a.marketValue),
         sectorAllocation,
-        performance: [],
+        performance,
         isDemo: false,
     };
 }

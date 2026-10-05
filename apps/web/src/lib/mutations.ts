@@ -7,6 +7,7 @@
  */
 
 import { prisma } from "@stock-analyst/db";
+import { isAuthenticated } from "@/lib/auth";
 
 export interface ActionResult {
     ok: boolean;
@@ -30,6 +31,15 @@ function dbGuard(): ActionResult | null {
     return process.env.DATABASE_URL
         ? null
         : { ok: false, message: "DATABASE_URL belum di-set — perubahan tidak bisa disimpan (mode demo)." };
+}
+
+/** Pertahanan berlapis: middleware sudah menjaga, tapi aksi tulis dicek ulang. */
+function authGuard(): ActionResult | null {
+    return isAuthenticated() ? null : { ok: false, message: "Sesi tidak valid — silakan login ulang." };
+}
+
+function guard(): ActionResult | null {
+    return authGuard() ?? dbGuard();
 }
 
 /** "bbca" / "BBCA.JK" → "BBCA.JK"; null bila format tidak valid. */
@@ -65,7 +75,7 @@ async function syncStrategyTickers(): Promise<void> {
 }
 
 export async function addWatchlistStock(rawTicker: string): Promise<ActionResult> {
-    const blocked = dbGuard();
+    const blocked = guard();
     if (blocked) return blocked;
 
     const ticker = normalizeTicker(rawTicker);
@@ -92,7 +102,7 @@ export async function addWatchlistStock(rawTicker: string): Promise<ActionResult
 }
 
 export async function removeWatchlistStock(rawTicker: string): Promise<ActionResult> {
-    const blocked = dbGuard();
+    const blocked = guard();
     if (blocked) return blocked;
 
     const ticker = normalizeTicker(rawTicker);
@@ -116,7 +126,7 @@ export async function updateBotSettings(input: {
     status?: BotRunStatus;
     killSwitch?: boolean;
 }): Promise<ActionResult> {
-    const blocked = dbGuard();
+    const blocked = guard();
     if (blocked) return blocked;
 
     if (input.mode === "LIVE") {
@@ -160,7 +170,7 @@ export async function updateBotSettings(input: {
 }
 
 export async function updateRiskParams(input: RiskParamsInput): Promise<ActionResult> {
-    const blocked = dbGuard();
+    const blocked = guard();
     if (blocked) return blocked;
 
     const values = Object.values(input);
