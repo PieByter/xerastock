@@ -94,13 +94,13 @@ export default async function PortfolioPage() {
         <div>
           <h1 className="text-xl font-bold">Portfolio</h1>
           <p className="text-sm text-muted-foreground">
-            Nilai aset, alokasi sektor, dan unrealized P/L posisi paper trading
+            Nilai aset, drawdown, alokasi sektor, dan unrealized P/L posisi paper trading
           </p>
         </div>
         {portfolio.isDemo && <Badge tone="warning">Data contoh</Badge>}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard label="Nilai Portofolio" value={formatIDR(portfolio.totalValue, true)} sub={`Modal ${formatIDR(portfolio.totalInvested, true)}`} />
         <StatCard
           label="P/L Hari Ini"
@@ -113,6 +113,16 @@ export default async function PortfolioPage() {
           value={formatIDR(portfolio.totalPnl, true)}
           sub={formatPct(portfolio.totalPnlPct)}
           tone={portfolio.totalPnl >= 0 ? "success" : "danger"}
+        />
+        <StatCard
+          label="Max Drawdown"
+          value={portfolio.drawdown ? formatPct(portfolio.drawdown.maxDrawdownPct) : "—"}
+          sub={
+            portfolio.drawdown
+              ? `Saat ini ${formatPct(portfolio.drawdown.currentDrawdownPct)}`
+              : "Belum ada riwayat trade"
+          }
+          tone={portfolio.drawdown && portfolio.drawdown.maxDrawdownPct <= -10 ? "danger" : "default"}
         />
         <StatCard label="Kas" value={formatIDR(portfolio.cashBalance, true)} sub="saldo akun paper" />
       </div>

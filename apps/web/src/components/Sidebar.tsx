@@ -18,6 +18,7 @@ import {
     ChevronRight,
     LogOut,
     TrendingUp,
+    FlaskConical,
 } from "lucide-react";
 import { logoutAction } from "@/app/login/actions";
 
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
     { href: "/screener", label: "Stock Screener", icon: Filter },
     { href: "/technical", label: "Technical Analysis", icon: LineChart },
     { href: "/signals", label: "Signals & Alerts", icon: Radio },
+    { href: "/backtest", label: "Backtest", icon: FlaskConical },
     { href: "/news", label: "News", icon: Newspaper },
     { href: "/ai-assistant", label: "AI Assistant", icon: Sparkles },
     { href: "/settings", label: "Settings", icon: Settings },
