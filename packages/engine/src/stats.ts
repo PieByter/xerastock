@@ -34,6 +34,41 @@ export interface KeyStats {
     atrPct: number;
 }
 
+export interface DrawdownStats {
+    /** Drawdown terdalam dari puncak berjalan (persen, <= 0). */
+    maxDrawdownPct: number;
+    /** Drawdown nilai terakhir terhadap puncak terakhir (persen, <= 0). */
+    currentDrawdownPct: number;
+    /** Nilai puncak tertinggi dalam seri. */
+    peak: number;
+    /** Nilai terakhir dalam seri. */
+    current: number;
+}
+
+/**
+ * Statistik drawdown dari seri nilai (mis. kurva equity portofolio).
+ * Mengembalikan `null` bila seri kosong.
+ */
+export function drawdownStats(values: number[]): DrawdownStats | null {
+    if (values.length === 0) return null;
+
+    let peak = values[0]!;
+    let maxDrawdownPct = 0;
+    for (const value of values) {
+        if (value > peak) peak = value;
+        const drawdown = peak > 0 ? ((value - peak) / peak) * 100 : 0;
+        if (drawdown < maxDrawdownPct) maxDrawdownPct = drawdown;
+    }
+
+    const current = values[values.length - 1]!;
+    return {
+        maxDrawdownPct,
+        currentDrawdownPct: peak > 0 ? ((current - peak) / peak) * 100 : 0,
+        peak,
+        current,
+    };
+}
+
 export interface PriceLevel {
     price: number;
     /** Berapa kali level ini disentuh swing point. */
@@ -104,13 +139,7 @@ export function keyStats(candles: Candle[]): KeyStats | null {
     const returns20 = closes.slice(-21).map((close, i, arr) => (i === 0 ? 0 : pctChange(arr[i - 1] ?? 0, close) / 100));
     const volatility20 = stdDev(returns20.slice(1)) * Math.sqrt(TRADING_DAYS_PER_YEAR) * 100;
 
-    let peak = candles[0]?.close ?? 0;
-    let maxDrawdown = 0;
-    for (const candle of candles) {
-        if (candle.close > peak) peak = candle.close;
-        const drawdown = peak > 0 ? ((candle.close - peak) / peak) * 100 : 0;
-        if (drawdown < maxDrawdown) maxDrawdown = drawdown;
-    }
+    const maxDrawdown = drawdownStats(closes)?.maxDrawdownPct ?? 0;
 
     const atr14 = computeAtr(candles.slice(-15), 14);
 
