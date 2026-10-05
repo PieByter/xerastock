@@ -1,6 +1,11 @@
-# Local development stack: PostgreSQL + Redis
-# Jalankan: docker compose up -d
-version: "3.9"
+# Stack lengkap Stock Analyst: PostgreSQL + web dashboard + worker (bot & scheduler).
+#
+#   docker compose up -d --build      # jalankan semuanya
+#   docker compose logs -f worker     # lihat log bot/scheduler
+#
+# Env diambil dari file .env di root (opsional; kalau tidak ada, nilai default dipakai).
+# DASHBOARD_PASSWORD di-set saat BUILD (middleware Next.js membacanya saat build),
+# jadi mengubah nilainya berarti build ulang image web.
 
 services:
   postgres:
@@ -20,19 +25,39 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    container_name: stock-analyst-redis
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-}
+    container_name: stock-analyst-web
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/stock_analyst?schema=public
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-5}
+      OWNER_EMAIL: ${OWNER_EMAIL:-owner@xerastock.local}
     ports:
-      - "6379:6379"
-    volumes:
-      - redisdata:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: stock-analyst-worker
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/stock_analyst?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   pgdata:
-  redisdata:
