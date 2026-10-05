@@ -4,9 +4,34 @@
  */
 
 import type { PrismaClient } from "@stock-analyst/db";
-import { evaluateRules, type Candle } from "@stock-analyst/engine";
+import { evaluateRules, macd, rsi, sma, volumeSma, type Candle } from "@stock-analyst/engine";
 import { EMBED_COLORS, SIGNAL_DEDUP_WINDOW_MS, STRATEGY_CONFIG, type NotificationPayload, type StrategyType } from "@stock-analyst/shared";
+import type { BrokerAdapter } from "./paperBroker";
+import { executeSignal } from "./tradeEngine";
 import { logger } from "../logger";
+
+/** Cuplikan indikator saat sinyal match — dipakai untuk evaluasi rule nanti. */
+function indicatorSnapshot(candles: Candle[]) {
+    const closes = candles.map((candle) => candle.close);
+    const i = closes.length - 1;
+    const rsi14 = rsi(closes, 14)[i];
+    const ma20 = sma(closes, 20)[i];
+    const ma50 = sma(closes, 50)[i];
+    const histogram = macd(closes).histogram[i];
+    const volumeAverage = volumeSma(candles, 20)[i];
+    const volume = candles[i]?.volume ?? 0;
+    const round = (value: number | null | undefined) =>
+        value == null ? null : Number(value.toFixed(2));
+
+    return {
+        rsi14: round(rsi14),
+        ma20: round(ma20),
+        ma50: round(ma50),
+        macdHistogram: round(histogram),
+        volume,
+        volumeRatio: volumeAverage && volumeAverage > 0 ? Number((volume / volumeAverage).toFixed(2)) : null,
+    };
+}
 
 interface EvaluateOptions {
     prisma: PrismaClient;
@@ -16,6 +41,8 @@ interface EvaluateOptions {
     /** candles terurut ascending (terbaru di akhir). */
     candles: Candle[];
     fundamentals?: { pbv?: number; per?: number };
+    /** Bila diisi, sinyal langsung dieksekusi ke broker (paper trading). */
+    broker?: BrokerAdapter;
 }
 
 /**
@@ -24,7 +51,7 @@ interface EvaluateOptions {
  * dalam jendela dedup (anti notifikasi ganda).
  */
 export async function evaluateStrategyForStock(opts: EvaluateOptions): Promise<boolean> {
-    const { prisma, strategyId, stockId, ticker, candles, fundamentals } = opts;
+    const { prisma, strategyId, stockId, ticker, candles, fundamentals, broker } = opts;
 
     const strategy = await prisma.strategy.findUnique({ where: { id: strategyId } });
     if (!strategy || !strategy.isActive) return false;
@@ -96,5 +123,49 @@ export async function evaluateStrategyForStock(opts: EvaluateOptions): Promise<b
         { ticker, direction: result.direction, reasons: result.reasons },
         "sinyal baru dibuat",
     );
+
+    // Sambungkan ke eksekusi paper trading (guardrail ada di trade engine).
+    let execution = "not-executed";
+    if (broker) {
+        try {
+            execution = await executeSignal({
+                prisma,
+                broker,
+                strategyId,
+                stockId,
+                ticker,
+                signalId: signal.id,
+                direction: result.direction,
+                price: lastBar.close,
+                reasons: result.reasons,
+            });
+            logger.info({ ticker, direction: result.direction, outcome: execution }, "hasil eksekusi sinyal");
+        } catch (err) {
+            execution = "error";
+            logger.error({ err, ticker }, "gagal eksekusi sinyal");
+        }
+    }
+
+    // SignalLog (PRD §4.6): arsip kondisi saat match + hasil eksekusinya,
+    // bahan evaluasi "rule ini match berapa kali & hasilnya bagaimana".
+    await prisma.signalLog.create({
+        data: {
+            signalId: signal.id,
+            strategyType,
+            ticker,
+            notified: true,
+            snapshotJson: JSON.parse(
+                JSON.stringify({
+                    direction: result.direction,
+                    reasons: result.reasons,
+                    strength: result.strength,
+                    price: lastBar.close,
+                    indicators: indicatorSnapshot(candles),
+                    execution,
+                }),
+            ),
+        },
+    });
+
     return true;
 }
