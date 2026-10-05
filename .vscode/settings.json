@@ -1,0 +1,8 @@
+{
+  // Tombol generate commit di Source Control memakai model "utility" dan
+  // instruksi di bawah supaya formatnya konsisten dengan repo (Conventional
+  // Commits + ringkasan Bahasa Indonesia).
+  "github.copilot.chat.commitMessageGeneration.instructions": [
+    { "file": ".copilot-commit-message-instructions.md" }
+  ]
+}

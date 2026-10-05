@@ -27,6 +27,24 @@
       "problemMatcher": [],
       "group": "none",
       "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "Git: generate commit dengan AI (dry-run)",
+      "type": "shell",
+      "command": "node scripts/auto-commit.mjs --staged --ai",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "group": "none",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "Git: buat commit dengan AI (apply)",
+      "type": "shell",
+      "command": "node scripts/auto-commit.mjs --staged --ai --apply",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "group": "none",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
     }
   ]
 }
