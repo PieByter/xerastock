@@ -77,6 +77,8 @@ npm run dev:worker
 
 > `db:seed` idempoten dan juga dijalankan otomatis saat worker start. Tanpa seed, tabel `Strategy` kosong sehingga evaluator sinyal tidak menghasilkan apa pun.
 
+> **Supabase (pooler)**: untuk `DATABASE_URL` di `apps/web` & `apps/worker` gunakan **transaction pooler (port 6543)** dengan `?pgbouncer=true&connection_limit=1`; untuk `packages/db/.env` (perintah `db:*`/migrasi) gunakan **session pooler (port 5432)**. Port 5432 dibatasi 15 koneksi — jangan dipakai untuk runtime.
+
 ## Migrasi Database
 
 Skema dikelola dengan **Prisma Migrate** (`packages/db/prisma/migrations`). Database yang sudah ada tidak akan direset — migrasi awal `0_init` sudah ditandai *applied* (`prisma migrate resolve --applied 0_init`), jadi aman dipakai untuk database yang dibuat lewat `db:push`.
