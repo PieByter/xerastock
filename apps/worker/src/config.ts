@@ -31,8 +31,8 @@ const envSchema = z.object({
     BROKER_PROVIDER: z.enum(["auto", "http", "sample"]).default("auto"),
     BROKER_API_URL: z
         .string()
-        .refine((value) => /^https?:\/\/\S+$/i.test(value) && value.includes("{ticker}"), {
-            message: "BROKER_API_URL harus URL http(s) dan memuat placeholder {ticker}",
+        .refine((value) => value === "" || (/^https?:\/\/\S+$/i.test(value) && value.includes("{ticker}")), {
+            message: "BROKER_API_URL harus URL http(s) dan memuat placeholder {ticker} (kosongkan jika tidak dipakai)",
         })
         .optional(),
     BROKER_API_KEY: z.string().optional(),
@@ -43,8 +43,8 @@ const envSchema = z.object({
     CORPORATE_ACTION_PROVIDER: z.enum(["auto", "http", "sample"]).default("auto"),
     CORPORATE_ACTION_API_URL: z
         .string()
-        .refine((value) => /^https?:\/\/\S+$/i.test(value) && value.includes("{ticker}"), {
-            message: "CORPORATE_ACTION_API_URL harus URL http(s) dan memuat placeholder {ticker}",
+        .refine((value) => value === "" || (/^https?:\/\/\S+$/i.test(value) && value.includes("{ticker}")), {
+            message: "CORPORATE_ACTION_API_URL harus URL http(s) dan memuat placeholder {ticker} (kosongkan jika tidak dipakai)",
         })
         .optional(),
     CORPORATE_ACTION_API_KEY: z.string().optional(),
