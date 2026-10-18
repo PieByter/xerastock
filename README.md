@@ -57,13 +57,15 @@ npm install
 # 2. Jalankan Postgres (Redis tidak dipakai)
 docker compose up -d postgres
 
-# 3. Setup env
-cp .env.example .env
-# isi DATABASE_URL, DISCORD_BOT_TOKEN, dll
+# 3. Setup env — tiap workspace membaca file .env di foldernya sendiri:
+cp apps/web/.env.example apps/web/.env          # dibaca Next.js (web)
+cp apps/worker/.env.example apps/worker/.env    # dibaca worker (Discord bot, scheduler)
+cp .env.example packages/db/.env                # dibaca `npm run db:*` (cukup DATABASE_URL)
+# isi DATABASE_URL, DISCORD_BOT_TOKEN, dll di file yang sesuai (.env di root hanya dipakai `docker compose`)
 
 # 4. Setup database (Prisma)
 npm run db:generate
-npm run db:push
+npm run db:deploy      # terapkan migrasi dari prisma/migrations
 npm run db:seed        # user owner + watchlist default + 3 strategi sinyal (BSJP/BPJS/SWING)
 
 # 5. Jalankan web (http://localhost:3000)
@@ -74,6 +76,16 @@ npm run dev:worker
 ```
 
 > `db:seed` idempoten dan juga dijalankan otomatis saat worker start. Tanpa seed, tabel `Strategy` kosong sehingga evaluator sinyal tidak menghasilkan apa pun.
+
+## Migrasi Database
+
+Skema dikelola dengan **Prisma Migrate** (`packages/db/prisma/migrations`). Database yang sudah ada tidak akan direset — migrasi awal `0_init` sudah ditandai *applied* (`prisma migrate resolve --applied 0_init`), jadi aman dipakai untuk database yang dibuat lewat `db:push`.
+
+```bash
+npm run db:migrate     # buat + terapkan migrasi baru setelah mengubah schema.prisma (dev)
+npm run db:deploy      # terapkan migrasi yang sudah ada tanpa membuat yang baru (CI/produksi)
+npm run db:push        # alternatif cepat untuk eksperimen tanpa menyimpan file migrasi
+```
 
 ## Test Engine
 
