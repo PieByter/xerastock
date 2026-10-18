@@ -8,6 +8,13 @@ import yahooFinance from "yahoo-finance2";
 import { env } from "../config";
 import { logger } from "../logger";
 
+// Yahoo menolak User-Agent non-browser dengan HTTP 429 ("Too Many Requests") — terverifikasi 18/10/2026.
+// Lib v2 membaca `fetchOptions` dari moduleOptions per panggilan (bukan dari setGlobalConfig), jadi
+// UA browser ditempel di tiap request lewat argumen ketiga module.
+const YAHOO_USER_AGENT =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
+const yahooModuleOptions = { fetchOptions: { headers: { "User-Agent": YAHOO_USER_AGENT } } };
+
 export interface ProviderBar {
     timestamp: Date;
     open: number;
@@ -38,10 +45,14 @@ class YahooProvider implements MarketDataProvider {
 
     async getHistory(ticker: string, days: number): Promise<ProviderBar[]> {
         const period1 = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-        const result = await yahooFinance.historical(ticker, {
-            period1,
-            interval: "1d",
-        });
+        const result = await yahooFinance.historical(
+            ticker,
+            {
+                period1,
+                interval: "1d",
+            },
+            yahooModuleOptions,
+        );
 
         return result.map((r) => ({
             timestamp: r.date,
@@ -55,7 +66,7 @@ class YahooProvider implements MarketDataProvider {
     }
 
     async getQuote(ticker: string): Promise<ProviderQuote> {
-        const q = await yahooFinance.quote(ticker);
+        const q = await yahooFinance.quote(ticker, {}, yahooModuleOptions);
         const price = q.regularMarketPrice ?? 0;
         const prev = q.regularMarketPreviousClose ?? price;
         return {
