@@ -138,6 +138,8 @@ export interface StockDetail {
     brokerSummary: BrokerSummaryView | null;
     /** Net foreign flow historis + net kumulatif (PRD 4.3). */
     foreignFlow: ForeignFlowView | null;
+    /** Sumber snapshot fundamental terbaru (yahoo | manual | ...). */
+    fundamentalSource: string | null;
     /** true bila memakai data contoh (DB kosong / saham belum tersinkron). */
     isDemo: boolean;
 }
@@ -527,8 +529,9 @@ function buildDemoStockDetail(ticker: string, period: BrokerPeriodKey): StockDet
         })),
         stats: buildStats(analysisCandles),
         levels: buildLevels(analysisCandles, last.close),
-        brokerSummary: buildBrokerSummary(brokerRows, period),
+        brokerSummary: buildBrokerSummary(brokerRows, period, "sample"),
         foreignFlow,
+        fundamentalSource: null,
         isDemo: true,
     };
 }
@@ -578,6 +581,7 @@ export async function getStockDetail(
     }));
     const fundamentals = record.fundamentalSnapshots[0];
     const lastClose = candles[candles.length - 1]!.close;
+    const brokerSources = [...new Set(record.brokerSummaries.map((row) => row.source))];
 
     return {
         quote: buildQuote(record.ticker, record.name, candles, fundamentals, record.signals[0]?.direction),
@@ -596,8 +600,13 @@ export async function getStockDetail(
         })),
         stats: buildStats(analysisCandles),
         levels: buildLevels(analysisCandles, lastClose),
-        brokerSummary: buildBrokerSummary(toBrokerRows(record.brokerSummaries), period),
+        brokerSummary: buildBrokerSummary(
+            toBrokerRows(record.brokerSummaries),
+            period,
+            brokerSources.join("+") || "unknown",
+        ),
         foreignFlow: buildForeignFlow(toForeignFlowPoints([...record.priceBars])),
+        fundamentalSource: fundamentals?.source ?? null,
         isDemo: false,
     };
 }
@@ -1155,6 +1164,185 @@ export interface CorporateActionView {
     paymentDate: string | null;
     detail: string | null;
     daysUntilCumDate: number;
+}
+
+// ---------- Alerts ----------
+
+export interface AlertView {
+    id: string;
+    ticker: string;
+    name: string;
+    type: string;
+    condition: Record<string, unknown>;
+    repeat: boolean;
+    status: string;
+    lastTriggeredAt: string | null;
+    createdAt: string;
+}
+
+export interface AlertsPageData {
+    alerts: AlertView[];
+    stocks: { ticker: string; name: string }[];
+    isDemo: boolean;
+}
+
+export async function getAlerts(): Promise<AlertsPageData> {
+    const [rows, quotes] = await Promise.all([
+        safe("getAlerts", () =>
+            prisma.alert.findMany({
+                orderBy: { createdAt: "desc" },
+                take: 100,
+                include: { stock: true },
+            }),
+        ),
+        getQuotes(),
+    ]);
+
+    const stocks = quotes.map((quote) => ({ ticker: quote.ticker, name: quote.name }));
+    if (!rows) return { alerts: [], stocks, isDemo: true };
+
+    return {
+        alerts: rows.map((row) => ({
+            id: row.id,
+            ticker: row.stock.ticker,
+            name: row.stock.name,
+            type: row.type,
+            condition: (row.conditionJson ?? {}) as Record<string, unknown>,
+            repeat: row.repeat,
+            status: row.status,
+            lastTriggeredAt: row.lastTriggeredAt?.toISOString() ?? null,
+            createdAt: row.createdAt.toISOString(),
+        })),
+        stocks,
+        isDemo: false,
+    };
+}
+
+// ---------- Health / data source ----------
+
+export interface StockHealth {
+    ticker: string;
+    name: string;
+    barCount: number;
+    lastBarDate: string | null;
+    lastBarSource: string | null;
+    fundamentalSource: string | null;
+    fundamentalDate: string | null;
+    lastBrokerDate: string | null;
+    lastBrokerSource: string | null;
+    lastNewsDate: string | null;
+    lastSignalDate: string | null;
+}
+
+export interface HealthView {
+    dbAvailable: boolean;
+    generatedAt: string;
+    stocks: StockHealth[];
+    totals: {
+        brokerRows: number;
+        brokerSampleRows: number;
+        brokerRealRows: number;
+        news: number;
+        corporateActions: number;
+        corporateActionSamples: number;
+        signals: number;
+    };
+    outbox: { queued: number; sent: number; failed: number };
+}
+
+const EMPTY_HEALTH: HealthView = {
+    dbAvailable: false,
+    generatedAt: new Date().toISOString(),
+    stocks: [],
+    totals: {
+        brokerRows: 0,
+        brokerSampleRows: 0,
+        brokerRealRows: 0,
+        news: 0,
+        corporateActions: 0,
+        corporateActionSamples: 0,
+        signals: 0,
+    },
+    outbox: { queued: 0, sent: 0, failed: 0 },
+};
+
+export async function getHealth(): Promise<HealthView> {
+    if (!process.env.DATABASE_URL) return { ...EMPTY_HEALTH, generatedAt: new Date().toISOString() };
+
+    try {
+        const [stocks, brokerSampleRows, brokerRealRows, news, corporateActions, signals, outboxGroups] =
+            await Promise.all([
+                prisma.stock.findMany({
+                    where: { isActive: true },
+                    orderBy: { ticker: "asc" },
+                    include: {
+                        _count: { select: { priceBars: true } },
+                        priceBars: { orderBy: { timestamp: "desc" }, take: 1, select: { timestamp: true, source: true } },
+                        fundamentalSnapshots: {
+                            orderBy: { asOfDate: "desc" },
+                            take: 1,
+                            select: { asOfDate: true, source: true },
+                        },
+                        brokerSummaries: {
+                            orderBy: { date: "desc" },
+                            take: 1,
+                            select: { date: true, source: true },
+                        },
+                        news: { orderBy: { publishedAt: "desc" }, take: 1, select: { publishedAt: true } },
+                        signals: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
+                    },
+                }),
+                prisma.brokerSummary.count({ where: { source: "sample" } }),
+                prisma.brokerSummary.count({ where: { source: { not: "sample" } } }),
+                prisma.news.count(),
+                prisma.corporateAction.findMany({ select: { title: true, detail: true } }),
+                prisma.signal.count(),
+                prisma.alertEvent.groupBy({ by: ["status"], _count: { _all: true } }),
+            ]);
+
+        const outbox = { queued: 0, sent: 0, failed: 0 };
+        for (const group of outboxGroups) {
+            const count = group._count._all;
+            if (group.status === "QUEUED") outbox.queued = count;
+            else if (group.status === "SENT") outbox.sent = count;
+            else if (group.status === "FAILED") outbox.failed = count;
+        }
+
+        const corporateActionSamples = corporateActions.filter((action) =>
+            `${action.title} ${action.detail ?? ""}`.toLowerCase().includes("data contoh"),
+        ).length;
+
+        return {
+            dbAvailable: true,
+            generatedAt: new Date().toISOString(),
+            stocks: stocks.map((stock) => ({
+                ticker: stock.ticker,
+                name: stock.name,
+                barCount: stock._count.priceBars,
+                lastBarDate: stock.priceBars[0]?.timestamp.toISOString().slice(0, 10) ?? null,
+                lastBarSource: stock.priceBars[0]?.source ?? null,
+                fundamentalSource: stock.fundamentalSnapshots[0]?.source ?? null,
+                fundamentalDate: stock.fundamentalSnapshots[0]?.asOfDate.toISOString().slice(0, 10) ?? null,
+                lastBrokerDate: stock.brokerSummaries[0]?.date.toISOString().slice(0, 10) ?? null,
+                lastBrokerSource: stock.brokerSummaries[0]?.source ?? null,
+                lastNewsDate: stock.news[0]?.publishedAt.toISOString().slice(0, 10) ?? null,
+                lastSignalDate: stock.signals[0]?.createdAt.toISOString().slice(0, 10) ?? null,
+            })),
+            totals: {
+                brokerRows: brokerSampleRows + brokerRealRows,
+                brokerSampleRows,
+                brokerRealRows,
+                news,
+                corporateActions: corporateActions.length,
+                corporateActionSamples,
+                signals,
+            },
+            outbox,
+        };
+    } catch (err) {
+        console.warn(`[health] gagal memuat status: ${(err as Error).message}`);
+        return { ...EMPTY_HEALTH, generatedAt: new Date().toISOString() };
+    }
 }
 
 /** Corporate action dari DB; fallback ke data contoh agar kalender tetap terlihat. */

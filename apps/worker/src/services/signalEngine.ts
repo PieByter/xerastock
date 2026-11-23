@@ -79,12 +79,15 @@ export async function evaluateStrategyForStock(opts: EvaluateOptions): Promise<b
 
     const lastBar = candles[candles.length - 1]!;
     const strategyType = (strategy.strategyType ?? "SWING") as StrategyType;
+    // Tandai sinyal yang berasal dari rule valuasi supaya dashboard tidak
+    // menyebutnya "TECHNICAL" saat yang match justru PBV/PER.
+    const source = result.reasons.some((reason) => /^(PBV|PER)\b/.test(reason)) ? "FUNDAMENTAL" : "TECHNICAL";
     const signal = await prisma.signal.create({
         data: {
             stockId,
             strategyId,
             strategyType,
-            source: "TECHNICAL",
+            source,
             direction: result.direction,
             reasonJson: result.reasons,
             price: lastBar.close,
@@ -118,6 +121,35 @@ export async function evaluateStrategyForStock(opts: EvaluateOptions): Promise<b
             payloadJson: JSON.parse(JSON.stringify(payload)),
         },
     });
+
+    // Alert tipe SIGNAL (dibuat dari dashboard) — beri tahu user bahwa sinyal
+    // yang mereka pantau untuk saham ini baru match.
+    const signalAlerts = await prisma.alert.findMany({
+        where: { stockId, type: "SIGNAL", status: "ACTIVE" },
+    });
+    for (const alert of signalAlerts) {
+        await prisma.alertEvent.create({
+            data: {
+                alertId: alert.id,
+                signalId: signal.id,
+                type: "SIGNAL",
+                sentTo: "discord",
+                status: "QUEUED",
+                payloadJson: JSON.parse(
+                    JSON.stringify({
+                        ...payload,
+                        title: `🔔 Alert sinyal — ${ticker}`,
+                    }),
+                ),
+            },
+        });
+        if (!alert.repeat) {
+            await prisma.alert.update({
+                where: { id: alert.id },
+                data: { status: "TRIGGERED", lastTriggeredAt: new Date() },
+            });
+        }
+    }
 
     logger.info(
         { ticker, direction: result.direction, reasons: result.reasons },

@@ -28,7 +28,7 @@ const envSchema = z.object({
     MARKET_DATA_PROVIDER: z.enum(["yahoo", "twelvedata"]).default("yahoo"),
     TWELVE_DATA_API_KEY: z.string().optional(),
     // Broker summary & foreign flow (PRD 10.3) — provider ditukar lewat env.
-    BROKER_PROVIDER: z.enum(["auto", "http", "sample"]).default("auto"),
+    BROKER_PROVIDER: z.enum(["auto", "http", "sectors", "sample"]).default("auto"),
     BROKER_API_URL: z
         .string()
         .refine((value) => value === "" || (/^https?:\/\/\S+$/i.test(value) && value.includes("{ticker}")), {
@@ -37,10 +37,12 @@ const envSchema = z.object({
         .optional(),
     BROKER_API_KEY: z.string().optional(),
     BROKER_SYNC_DAYS: z.coerce.number().int().min(1).max(60).default(10),
+    // Sectors Financial API (opsional, berbayar) — broker summary per saham.
+    SECTORS_API_KEY: z.string().optional(),
     // Berita (PRD §4.5) — daftar URL RSS dipisah koma; kosong = pakai feed default.
     NEWS_RSS_URLS: z.string().optional(),
     // Corporate action (PRD §4.4) — auto = http kalau URL diisi, kalau tidak pakai contoh.
-    CORPORATE_ACTION_PROVIDER: z.enum(["auto", "http", "sample"]).default("auto"),
+    CORPORATE_ACTION_PROVIDER: z.enum(["auto", "idx", "http", "sample"]).default("auto"),
     CORPORATE_ACTION_API_URL: z
         .string()
         .refine((value) => value === "" || (/^https?:\/\/\S+$/i.test(value) && value.includes("{ticker}")), {

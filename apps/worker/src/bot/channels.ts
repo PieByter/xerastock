@@ -48,6 +48,58 @@ export class DiscordChannel implements NotificationChannel {
     }
 }
 
+/**
+ * Channel Telegram (PRD §10.2 fallback). Mengirim payload yang sama dengan
+ * Discord sebagai teks biasa — tidak butuh dependency tambahan.
+ */
+export class TelegramChannel implements NotificationChannel {
+    readonly name = "telegram";
+
+    constructor(
+        private readonly botToken: string,
+        private readonly chatId: string,
+    ) { }
+
+    private format(payload: NotificationPayload): string {
+        const lines = [`${payload.title}`, "", payload.description];
+        for (const field of payload.fields ?? []) {
+            lines.push(`${field.name}: ${field.value}`);
+        }
+        return lines.join("\n").slice(0, 4000);
+    }
+
+    async send(payload: NotificationPayload): Promise<boolean> {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15_000);
+        try {
+            const response = await fetch(`https://api.telegram.org/bot${this.botToken}/sendMessage`, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({
+                    chat_id: this.chatId,
+                    text: this.format(payload),
+                    disable_web_page_preview: true,
+                }),
+                signal: controller.signal,
+            });
+            const json = (await response.json().catch(() => ({}))) as { ok?: boolean; description?: string };
+            if (!response.ok || json.ok === false) {
+                logger.error(
+                    { status: response.status, description: json.description },
+                    "Telegram menolak pesan",
+                );
+                return false;
+            }
+            return true;
+        } catch (err) {
+            logger.error({ err }, "gagal kirim notifikasi Telegram");
+            return false;
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
+}
+
 /** Channel default bila routing tidak menemukan channel spesifik. */
 function defaultChannelId(): string | undefined {
     return env.DISCORD_NOTIFY_CHANNEL_ID ?? env.DISCORD_SIGNAL_CHANNEL_ID;
@@ -69,8 +121,28 @@ function routeFor(type: NotificationType): { name: string; channelId: string | u
     }
 }
 
-/** Pilih channel untuk sebuah payload; null bila belum ada channel dikonfigurasi. */
-export function resolveChannel(payload: NotificationPayload): NotificationChannel | null {
+/** Channel Telegram bila token & chat ID tersedia. */
+export function createTelegramChannel(): TelegramChannel | null {
+    const token = env.TELEGRAM_BOT_TOKEN;
+    const chatId = env.TELEGRAM_CHAT_ID;
+    return token && chatId ? new TelegramChannel(token, chatId) : null;
+}
+
+/**
+ * Semua channel aktif untuk satu payload. Discord tetap primary; Telegram
+ * ikut dikirim bila dikonfigurasi (fallback/backup channel).
+ */
+export function resolveChannels(payload: NotificationPayload): NotificationChannel[] {
+    const channels: NotificationChannel[] = [];
     const { name, channelId } = routeFor(payload.type);
-    return channelId ? new DiscordChannel(name, channelId) : null;
+    if (channelId) channels.push(new DiscordChannel(name, channelId));
+
+    const telegram = createTelegramChannel();
+    if (telegram) channels.push(telegram);
+    return channels;
+}
+
+/** Pilih channel pertama untuk sebuah payload; null bila belum ada. */
+export function resolveChannel(payload: NotificationPayload): NotificationChannel | null {
+    return resolveChannels(payload)[0] ?? null;
 }

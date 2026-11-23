@@ -18,7 +18,9 @@ import {
     ChevronRight,
     LogOut,
     TrendingUp,
+    Bell,
     FlaskConical,
+    Activity,
 } from "lucide-react";
 import { logoutAction } from "@/app/login/actions";
 
@@ -29,10 +31,12 @@ const NAV_ITEMS = [
     { href: "/broker-flow", label: "Broker Flow", icon: ArrowLeftRight },
     { href: "/screener", label: "Stock Screener", icon: Filter },
     { href: "/technical", label: "Technical Analysis", icon: LineChart },
-    { href: "/signals", label: "Signals & Alerts", icon: Radio },
     { href: "/backtest", label: "Backtest", icon: FlaskConical },
+    { href: "/signals", label: "Signals", icon: Radio },
+    { href: "/alerts", label: "Alerts", icon: Bell },
     { href: "/news", label: "News", icon: Newspaper },
     { href: "/ai-assistant", label: "AI Assistant", icon: Sparkles },
+    { href: "/health", label: "Health", icon: Activity },
     { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -114,8 +118,8 @@ export default function Sidebar() {
                         BSJP · BPJS · Swing aktif
                     </p>
                     <div className="mt-2 text-[10px] text-muted-foreground border-t border-border/60 pt-1.5 flex justify-between">
-                        <span>Discord Bot</span>
-                        <span className="text-cyan-400 font-mono">4 channels</span>
+                        <span>Discord · Telegram</span>
+                        <span className="text-cyan-400 font-mono">outbox</span>
                     </div>
                     <form action={logoutAction} className="mt-2">
                         <button

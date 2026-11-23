@@ -155,18 +155,231 @@ export function createSampleProvider(): CorporateActionProvider {
     };
 }
 
+// ---------- Provider: kalender resmi IDX (gratis, tanpa key) ----------
+
+interface IdxCalendarEvent {
+    id?: number;
+    title?: string;
+    description?: string;
+    location?: string;
+    start?: string;
+    Jenis?: string;
+    Step?: string;
+}
+
+interface IdxCalendarResponse {
+    Results?: IdxCalendarEvent[];
+}
+
+const IDX_PRIMARY_BASE = "https://www.idx.co.id/primary";
+const IDX_USER_AGENT =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+
+function monthKeys(now = new Date(), count = 4): string[] {
+    const keys: string[] = [];
+    const cursor = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    for (let i = 0; i < count; i++) {
+        keys.push(`${cursor.getUTCFullYear()}${String(cursor.getUTCMonth() + 1).padStart(2, "0")}01`);
+        cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+    }
+    return keys;
+}
+
+function eventDate(value: string | undefined): Date | null {
+    if (!value) return null;
+    const date = new Date(value.slice(0, 10));
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function classifyIdxEvent(description: string): CorporateActionItem["type"] | null {
+    const text = description.toLowerCase();
+    if (text.includes("rups")) return "RUPS";
+    if (text.includes("hmetd") || text.includes("right issue") || text.includes("rights issue")) return "RIGHTS_ISSUE";
+    if (text.includes("split") || text.includes("pemecahan")) return "STOCK_SPLIT";
+    if (text.includes("dividen")) return "DIVIDEND";
+    return null;
+}
+
+function idxMilestone(description: string): "cum" | "ex" | "record" | "payment" | "other" {
+    const text = description.toLowerCase();
+    if (text.startsWith("tanggal cum") || text.includes(" cum ")) return "cum";
+    if (text.startsWith("tanggal ex") || text.includes(" ex ")) return "ex";
+    if (text.startsWith("tanggal dps") || text.includes("recording")) return "record";
+    if (text.startsWith("tanggal pembayaran") || text.includes("pembayaran")) return "payment";
+    return "other";
+}
+
+/** Ubah event kalender IDX (satu baris per milestone) menjadi aksi korporasi. */
+export function normalizeIdxCalendar(
+    events: IdxCalendarEvent[],
+    fallbackTicker: string,
+): CorporateActionItem[] {
+    const ticker = fallbackTicker.toUpperCase().replace(/\.JK$/, "");
+    const relevant = events.filter((event) => {
+        const title = (event.title ?? "").toUpperCase().replace(/\.JK$/, "");
+        return title === ticker;
+    });
+
+    const groups = new Map<CorporateActionItem["type"], IdxCalendarEvent[]>();
+    for (const event of relevant) {
+        const description = event.description ?? event.Jenis ?? event.title ?? "";
+        const type = classifyIdxEvent(description);
+        if (!type) continue;
+        const list = groups.get(type) ?? [];
+        list.push(event);
+        groups.set(type, list);
+    }
+
+    const items: CorporateActionItem[] = [];
+    for (const [type, list] of groups) {
+        const dated = list
+            .map((event) => ({ event, date: eventDate(event.start) }))
+            .filter((entry): entry is { event: IdxCalendarEvent; date: Date } => entry.date != null)
+            .sort((a, b) => a.date.getTime() - b.date.getTime());
+        if (dated.length === 0) continue;
+
+        const cumEvents = dated.filter((entry) => idxMilestone(entry.event.description ?? "") === "cum");
+        const exEvents = dated.filter((entry) => idxMilestone(entry.event.description ?? "") === "ex");
+        const recordEvents = dated.filter((entry) => idxMilestone(entry.event.description ?? "") === "record");
+        const paymentEvents = dated.filter((entry) => idxMilestone(entry.event.description ?? "") === "payment");
+
+        const seeds = cumEvents.length > 0 ? cumEvents : exEvents.length > 0 ? exEvents : dated;
+        for (const seed of seeds) {
+            const cumDate = seed.date;
+            const exDate =
+                exEvents.find((entry) => entry.date.getTime() >= cumDate.getTime())?.date ??
+                (type === "DIVIDEND" || type === "RIGHTS_ISSUE" ? new Date(cumDate.getTime() + 86_400_000) : cumDate);
+            const recordDate =
+                recordEvents.find((entry) => entry.date.getTime() >= cumDate.getTime())?.date ?? null;
+            const paymentDate =
+                paymentEvents.find((entry) => entry.date.getTime() >= cumDate.getTime())?.date ?? null;
+
+            const related = dated.filter(
+                (entry) => Math.abs(entry.date.getTime() - cumDate.getTime()) <= 31 * 86_400_000,
+            );
+            const title =
+                seed.event.description?.trim() ||
+                `${type === "DIVIDEND" ? "Dividen" : type} ${ticker}`;
+
+            items.push({
+                ticker,
+                type,
+                title,
+                cumDate,
+                exDate,
+                recordDate,
+                paymentDate,
+                detail: [...new Set(related.map((entry) => entry.event.description?.trim()).filter(Boolean))].join(" · ") || null,
+            });
+        }
+    }
+
+    // Dedup dalam satu respons (kalender bisa memuat beberapa milestone).
+    const seen = new Set<string>();
+    return items.filter((item) => {
+        const key = `${item.ticker}-${item.type}-${item.cumDate.toISOString().slice(0, 10)}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+/**
+ * Provider kalender resmi IDX (`/primary/Home/GetCalendar`). Endpoint publik
+ * ini tidak butuh API key, tetapi berada di belakang Cloudflare — bila
+ * diblokir, provider fallback (http/sample) tetap dipakai.
+ */
+export function createIdxProvider(fetchImpl: typeof globalThis.fetch = globalThis.fetch): CorporateActionProvider {
+    const cache = new Map<string, IdxCalendarEvent[]>();
+
+    async function loadMonth(month: string): Promise<IdxCalendarEvent[]> {
+        const cached = cache.get(month);
+        if (cached) return cached;
+
+        const url = `${IDX_PRIMARY_BASE}/Home/GetCalendar?range=m&date=${month}`;
+        const res = await fetchImpl(url, {
+            headers: {
+                accept: "application/json, text/plain, */*",
+                "user-agent": IDX_USER_AGENT,
+                referer: "https://www.idx.co.id/",
+            },
+        });
+        if (!res.ok) throw new Error(`IDX calendar HTTP ${res.status}`);
+        const json = (await res.json()) as IdxCalendarResponse;
+        const events = json.Results ?? [];
+        cache.set(month, events);
+        return events;
+    }
+
+    return {
+        name: "idx",
+        async getActions(ticker: string): Promise<CorporateActionItem[]> {
+            const events: IdxCalendarEvent[] = [];
+            let loadedMonths = 0;
+            const months = monthKeys();
+            for (const month of months) {
+                try {
+                    events.push(...(await loadMonth(month)));
+                    loadedMonths++;
+                } catch (err) {
+                    logger.warn({ err, month }, "kalender IDX bulan ini gagal dimuat");
+                }
+            }
+            // Semua bulan gagal (mis. Cloudflare memblokir) → biarkan fallback
+            // provider bekerja. Kalau minimal satu bulan berhasil dimuat,
+            // hasil kosong berarti memang tidak ada aksi korporasi.
+            if (loadedMonths === 0) throw new Error("kalender IDX tidak dapat diakses");
+
+            const now = Date.now();
+            return normalizeIdxCalendar(events, ticker).filter((item) => {
+                const time = item.cumDate.getTime();
+                return time >= now - 30 * 86_400_000 && time <= now + 180 * 86_400_000;
+            });
+        },
+    };
+}
+
+/** Coba provider berurutan; pakai hasil pertama yang berisi data. */
+export class FallbackCorporateActionProvider implements CorporateActionProvider {
+    readonly name: string;
+
+    constructor(private readonly providers: CorporateActionProvider[]) {
+        this.name = providers.map((provider) => provider.name).join("+");
+    }
+
+    async getActions(ticker: string): Promise<CorporateActionItem[]> {
+        const errors: string[] = [];
+        for (const provider of this.providers) {
+            try {
+                // Provider pertama yang berhasil adalah sumber otoritatif —
+                // hasil kosong berarti memang tidak ada aksi korporasi, bukan
+                // alasan untuk memakai data contoh.
+                return await provider.getActions(ticker);
+            } catch (err) {
+                errors.push(`${provider.name}: ${(err as Error).message}`);
+                logger.warn({ err, provider: provider.name, ticker }, "provider corporate action gagal");
+            }
+        }
+        throw new Error(`semua provider corporate action gagal → ${errors.join(" | ")}`);
+    }
+}
+
 export function resolveProvider(): CorporateActionProvider {
     const configured = env.CORPORATE_ACTION_PROVIDER;
     const hasUrl = Boolean(env.CORPORATE_ACTION_API_URL);
 
     if (configured === "sample") return createSampleProvider();
-    if (configured === "http" && hasUrl) {
-        return createHttpProvider(env.CORPORATE_ACTION_API_URL!, env.CORPORATE_ACTION_API_KEY);
+    if (configured === "http") {
+        return hasUrl
+            ? createHttpProvider(env.CORPORATE_ACTION_API_URL!, env.CORPORATE_ACTION_API_KEY)
+            : createSampleProvider();
     }
-    if (configured === "auto" && hasUrl) {
-        return createHttpProvider(env.CORPORATE_ACTION_API_URL!, env.CORPORATE_ACTION_API_KEY);
-    }
-    return createSampleProvider();
+    if (configured === "idx") return new FallbackCorporateActionProvider([createIdxProvider(), createSampleProvider()]);
+
+    const providers: CorporateActionProvider[] = [createIdxProvider()];
+    if (hasUrl) providers.push(createHttpProvider(env.CORPORATE_ACTION_API_URL!, env.CORPORATE_ACTION_API_KEY));
+    providers.push(createSampleProvider());
+    return new FallbackCorporateActionProvider(providers);
 }
 
 export interface CorporateActionSyncResult {

@@ -170,6 +170,95 @@ export async function updateBotSettings(input: {
     }
 }
 
+// ---------- Alert CRUD ----------
+
+export type AlertTypeInput = "PRICE_ABOVE" | "PRICE_BELOW" | "SIGNAL" | "CHANNEL_BREAK";
+
+export interface AlertInput {
+    ticker: string;
+    type: AlertTypeInput;
+    level?: number;
+    period?: number;
+    direction?: "above" | "below";
+    repeat?: boolean;
+}
+
+export async function createAlert(input: AlertInput): Promise<ActionResult> {
+    const blocked = guard();
+    if (blocked) return blocked;
+
+    const ticker = normalizeTicker(input.ticker);
+    if (!ticker) return { ok: false, message: "Ticker tidak valid." };
+
+    let conditionJson: Record<string, number | string>;
+    if (input.type === "PRICE_ABOVE" || input.type === "PRICE_BELOW") {
+        if (!Number.isFinite(input.level) || (input.level ?? 0) <= 0) {
+            return { ok: false, message: "Level harga harus angka positif." };
+        }
+        conditionJson = { level: input.level! };
+    } else if (input.type === "CHANNEL_BREAK") {
+        const period = Math.round(input.period ?? 20);
+        if (!Number.isFinite(period) || period < 2 || period > 120) {
+            return { ok: false, message: "Periode channel harus 2–120 hari." };
+        }
+        conditionJson = { period, direction: input.direction === "below" ? "below" : "above" };
+    } else {
+        conditionJson = {};
+    }
+
+    try {
+        const userId = await ensureOwner();
+        const stock = await prisma.stock.upsert({
+            where: { ticker },
+            update: { isActive: true },
+            create: { ticker, name: ticker, exchange: "IDX", yahooSymbol: ticker },
+        });
+        await prisma.alert.create({
+            data: {
+                userId,
+                stockId: stock.id,
+                type: input.type,
+                conditionJson,
+                repeat: input.repeat ?? false,
+                status: "ACTIVE",
+            },
+        });
+        return { ok: true, message: `Alert ${input.type} untuk ${ticker} dibuat.` };
+    } catch (err) {
+        return { ok: false, message: `Gagal membuat alert: ${(err as Error).message}` };
+    }
+}
+
+export async function setAlertStatus(id: string, status: "ACTIVE" | "DISABLED"): Promise<ActionResult> {
+    const blocked = guard();
+    if (blocked) return blocked;
+
+    try {
+        const userId = await ensureOwner();
+        const alert = await prisma.alert.findFirst({ where: { id, userId } });
+        if (!alert) return { ok: false, message: "Alert tidak ditemukan." };
+        await prisma.alert.update({ where: { id }, data: { status } });
+        return { ok: true, message: `Alert ${status === "ACTIVE" ? "diaktifkan" : "dinonaktifkan"}.` };
+    } catch (err) {
+        return { ok: false, message: `Gagal memperbarui alert: ${(err as Error).message}` };
+    }
+}
+
+export async function deleteAlert(id: string): Promise<ActionResult> {
+    const blocked = guard();
+    if (blocked) return blocked;
+
+    try {
+        const userId = await ensureOwner();
+        const result = await prisma.alert.deleteMany({ where: { id, userId } });
+        return result.count > 0
+            ? { ok: true, message: "Alert dihapus." }
+            : { ok: false, message: "Alert tidak ditemukan." };
+    } catch (err) {
+        return { ok: false, message: `Gagal menghapus alert: ${(err as Error).message}` };
+    }
+}
+
 export async function updateRiskParams(input: RiskParamsInput): Promise<ActionResult> {
     const blocked = guard();
     if (blocked) return blocked;

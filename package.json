@@ -22,7 +22,8 @@
     "db:studio": "npm run db:studio --workspace @stock-analyst/db",
     "commit:auto": "node scripts/auto-commit.mjs",
     "commit:auto:apply": "node scripts/auto-commit.mjs --apply",
-    "news:sync": "npm run news:sync --workspace @stock-analyst/worker"
+    "news:sync": "npm run news:sync --workspace @stock-analyst/worker",
+    "fundamentals:sync": "npm run fundamentals:sync --workspace @stock-analyst/worker"
   },
   "engines": {
     "node": ">=20.0.0"

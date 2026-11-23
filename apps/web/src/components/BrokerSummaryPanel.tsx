@@ -140,21 +140,26 @@ export default function BrokerSummaryPanel({
                 title="Broker Summary"
                 subtitle={`${summary.totalBrokers} broker · ${summary.tradingDays} hari bursa s/d ${formatDayString(summary.date)}`}
                 action={
-                    <div className="flex gap-0.5 rounded-lg bg-muted p-0.5">
-                        {BROKER_PERIODS.map((period) => (
-                            <Link
-                                key={period.key}
-                                href={periodHref(period.key)}
-                                className={cn(
-                                    "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                                    period.key === summary.period
-                                        ? "bg-primary text-white"
-                                        : "text-muted-foreground hover:text-foreground",
-                                )}
-                            >
-                                {period.label}
-                            </Link>
-                        ))}
+                    <div className="flex items-center gap-2">
+                        <Badge tone={summary.source.includes("sample") ? "warning" : "info"}>
+                            sumber: {summary.source}
+                        </Badge>
+                        <div className="flex gap-0.5 rounded-lg bg-muted p-0.5">
+                            {BROKER_PERIODS.map((period) => (
+                                <Link
+                                    key={period.key}
+                                    href={periodHref(period.key)}
+                                    className={cn(
+                                        "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                                        period.key === summary.period
+                                            ? "bg-primary text-white"
+                                            : "text-muted-foreground hover:text-foreground",
+                                    )}
+                                >
+                                    {period.label}
+                                </Link>
+                            ))}
+                        </div>
                     </div>
                 }
             />

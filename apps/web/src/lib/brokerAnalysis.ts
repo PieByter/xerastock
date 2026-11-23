@@ -71,6 +71,8 @@ export interface BrokerStreakView {
 export interface BrokerSummaryView {
     period: BrokerPeriodKey;
     periodLabel: string;
+    /** Sumber baris broker (sample | scraper | sectors | ...). */
+    source: string;
     /** Tanggal bursa terakhir yang punya data. */
     date: string;
     /** Jumlah hari bursa tercakup di periode terpilih. */
@@ -117,7 +119,11 @@ function toTableRow(row: ReturnType<typeof aggregateBrokers>[number], maxAbsNet:
  * `rows` sebaiknya berisi riwayat beberapa minggu supaya streak terdeteksi,
  * meskipun tabelnya hanya menampilkan periode terpilih.
  */
-export function buildBrokerSummary(rows: BrokerRow[], period: BrokerPeriodKey): BrokerSummaryView | null {
+export function buildBrokerSummary(
+    rows: BrokerRow[],
+    period: BrokerPeriodKey,
+    source = "unknown",
+): BrokerSummaryView | null {
     if (rows.length === 0) return null;
 
     const allDates = [...new Set(rows.map((r) => r.date))].sort().reverse();
@@ -139,6 +145,7 @@ export function buildBrokerSummary(rows: BrokerRow[], period: BrokerPeriodKey): 
     return {
         period,
         periodLabel: periodConfig.label,
+        source,
         date: allDates[0]!,
         tradingDays: windowDates.size,
         totalBrokers: aggregates.length,

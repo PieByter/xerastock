@@ -10,12 +10,16 @@ import { revalidatePath } from "next/cache";
 import type { ScreenerFilter } from "@stock-analyst/shared";
 import {
     addWatchlistStock,
+    createAlert,
+    deleteAlert,
     removeWatchlistStock,
+    setAlertStatus,
     updateBotSettings,
     updateRiskParams,
     saveScreenerPreset,
     deleteScreenerPreset,
     type ActionResult,
+    type AlertInput,
     type BotMode,
     type BotRunStatus,
     type RiskParamsInput,
@@ -73,5 +77,26 @@ export async function saveScreenerPresetAction(
 export async function deleteScreenerPresetAction(id: string): Promise<ActionResult> {
     const result = await deleteScreenerPreset(id);
     if (result.ok) revalidatePath("/screener");
+    return result;
+}
+
+export async function createAlertAction(input: AlertInput): Promise<ActionResult> {
+    const result = await createAlert(input);
+    if (result.ok) revalidatePath("/alerts");
+    return result;
+}
+
+export async function setAlertStatusAction(
+    id: string,
+    status: "ACTIVE" | "DISABLED",
+): Promise<ActionResult> {
+    const result = await setAlertStatus(id, status);
+    if (result.ok) revalidatePath("/alerts");
+    return result;
+}
+
+export async function deleteAlertAction(id: string): Promise<ActionResult> {
+    const result = await deleteAlert(id);
+    if (result.ok) revalidatePath("/alerts");
     return result;
 }

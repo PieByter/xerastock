@@ -272,6 +272,138 @@ export class HttpBrokerProvider implements BrokerSummaryProvider {
     }
 }
 
+// ---------- Provider: Sectors API (broker summary per saham, berbayar) ----------
+
+export interface SectorsBrokerProviderOptions {
+    apiKey: string;
+    baseUrl?: string;
+    fetchImpl?: typeof globalThis.fetch;
+    timeoutMs?: number;
+}
+
+interface SectorsBrokerRow {
+    broker_code?: string;
+    bfreq?: number;
+    blot?: number;
+    bval?: number;
+    sfreq?: number;
+    slot?: number;
+    sval?: number;
+    f_bval?: number | null;
+    f_sval?: number | null;
+}
+
+interface SectorsBrokerDay {
+    date?: string;
+    summary?: SectorsBrokerRow[];
+}
+
+interface SectorsBrokerResponse {
+    data?: SectorsBrokerDay[];
+    message?: string;
+}
+
+/**
+ * Adapter konkret untuk Sectors Financial API (`/v2/broker-summary/{symbol}/`).
+ *
+ * Endpoint ini menyediakan broker summary per saham — sesuatu yang tidak
+ * tersedia di endpoint publik IDX (GetBrokerSummary IDX hanya market-wide).
+ * Aktif bila `SECTORS_API_KEY` diisi; tanpa key, rantai provider jatuh ke
+ * `http`/`sample`.
+ *
+ * Catatan konversi: Sectors memakai satuan lot, sedangkan tabel kita memakai
+ * lembar saham (1 lot = 100 lembar).
+ */
+export class SectorsBrokerProvider implements BrokerSummaryProvider {
+    readonly name = "sectors";
+
+    constructor(private readonly options: SectorsBrokerProviderOptions) { }
+
+    private get baseUrl(): string {
+        return (this.options.baseUrl ?? "https://api.sectors.app").replace(/\/$/, "");
+    }
+
+    private symbol(ticker: string): string {
+        return ticker.toUpperCase().replace(/\.JK$/, "");
+    }
+
+    private async request(ticker: string, from: string, to: string): Promise<SectorsBrokerDay[]> {
+        const url = new URL(`${this.baseUrl}/v2/broker-summary/${encodeURIComponent(this.symbol(ticker))}/`);
+        url.searchParams.set("start", from);
+        url.searchParams.set("end", to);
+
+        const fetchImpl = this.options.fetchImpl ?? globalThis.fetch;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), this.options.timeoutMs ?? 20_000);
+        try {
+            const res = await fetchImpl(url, {
+                headers: {
+                    accept: "application/json",
+                    authorization: this.options.apiKey,
+                },
+                signal: controller.signal,
+            });
+            if (!res.ok) throw new Error(`Sectors HTTP ${res.status} ${res.statusText}`);
+            const json = (await res.json()) as SectorsBrokerResponse;
+            return json.data ?? [];
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
+
+    private toRows(days: SectorsBrokerDay[]): BrokerRow[] {
+        const rows: BrokerRow[] = [];
+        for (const day of days) {
+            const date = (day.date ?? "").slice(0, 10);
+            if (!date) continue;
+            for (const item of day.summary ?? []) {
+                const brokerCode = (item.broker_code ?? "").toUpperCase();
+                if (!brokerCode) continue;
+                const hasForeign = (item.f_bval ?? 0) > 0 || (item.f_sval ?? 0) > 0;
+                rows.push({
+                    date,
+                    brokerCode,
+                    investorType: hasForeign ? "FOREIGN" : "LOCAL",
+                    buyFreq: Number(item.bfreq ?? 0),
+                    buyVolume: Number(item.blot ?? 0) * 100,
+                    buyValue: Number(item.bval ?? 0),
+                    sellFreq: Number(item.sfreq ?? 0),
+                    sellVolume: Number(item.slot ?? 0) * 100,
+                    sellValue: Number(item.sval ?? 0),
+                });
+            }
+        }
+        return rows;
+    }
+
+    async getBrokerSummary(ticker: string, date: string): Promise<BrokerSummaryData | null> {
+        const target = toDateString(toUtcMidnight(date));
+        const rows = this.toRows(await this.request(ticker, target, target));
+        if (rows.length === 0) return null;
+        return { ticker, date: target, source: this.name, rows };
+    }
+
+    async getForeignFlow(ticker: string, from: string, to: string): Promise<ForeignFlowPoint[]> {
+        const days = await this.request(ticker, from, to);
+        const byDate = new Map<string, { buy: number; sell: number }>();
+
+        for (const day of days) {
+            const date = (day.date ?? "").slice(0, 10);
+            if (!date) continue;
+            const current = byDate.get(date) ?? { buy: 0, sell: 0 };
+            for (const item of day.summary ?? []) {
+                current.buy += Number(item.f_bval ?? 0);
+                current.sell += Number(item.f_sval ?? 0);
+            }
+            byDate.set(date, current);
+        }
+
+        return [...byDate.entries()]
+            .map(([date, value]) => ({ date, foreignBuy: value.buy, foreignSell: value.sell }))
+            .sort((a, b) => a.date.localeCompare(b.date));
+    }
+}
+
 // ---------- Provider: data contoh deterministik ----------
 
 export interface BrokerSampleContext {
@@ -387,23 +519,45 @@ export function createSampleBrokerProvider(prisma: PrismaClient): SampleBrokerPr
     });
 }
 
+let cachedSectorsProvider: SectorsBrokerProvider | null = null;
+
 /** Susun rantai provider sesuai env `BROKER_PROVIDER`. */
 export function buildBrokerProviderChain(prisma: PrismaClient): BrokerSummaryProvider[] {
     const sample = createSampleBrokerProvider(prisma);
+    const mode = env.BROKER_PROVIDER;
 
-    if (!env.BROKER_API_URL || env.BROKER_PROVIDER === "sample") {
-        if (env.BROKER_PROVIDER === "http") {
-            logger.warn("BROKER_PROVIDER=http tapi BROKER_API_URL kosong — memakai provider sample");
-        }
+    if (mode === "sample") return [sample];
+
+    const sectors = env.SECTORS_API_KEY
+        ? (cachedSectorsProvider ??= new SectorsBrokerProvider({ apiKey: env.SECTORS_API_KEY }))
+        : null;
+    const http = env.BROKER_API_URL ? buildHttp() : null;
+
+    if (mode === "sectors") {
+        if (sectors) return [sectors];
+        logger.warn("BROKER_PROVIDER=sectors tapi SECTORS_API_KEY kosong — memakai provider sample");
         return [sample];
     }
 
+    if (mode === "http") {
+        if (http) return [http];
+        logger.warn("BROKER_PROVIDER=http tapi BROKER_API_URL kosong — memakai provider sample");
+        return [sample];
+    }
+
+    // auto: provider asli berurutan, sample sebagai fallback terakhir.
+    const chain: BrokerSummaryProvider[] = [];
+    if (sectors) chain.push(sectors);
+    if (http) chain.push(http);
+    return chain.length > 0 ? [...chain, sample] : [sample];
+}
+
+function buildHttp(): HttpBrokerProvider {
     cachedHttpProvider ??= new HttpBrokerProvider({
-        urlTemplate: env.BROKER_API_URL,
+        urlTemplate: env.BROKER_API_URL!,
         apiKey: env.BROKER_API_KEY,
     });
-
-    return env.BROKER_PROVIDER === "http" ? [cachedHttpProvider] : [cachedHttpProvider, sample];
+    return cachedHttpProvider;
 }
 
 /** Provider aktif — bisa ditukar via env, dipakai service layer. */
@@ -436,6 +590,7 @@ export async function writeBrokerSummary(
     prisma: PrismaClient,
     stockId: string,
     data: BrokerSummaryData,
+    options: { syncForeignFlow?: boolean } = {},
 ): Promise<WriteBrokerResult> {
     const date = toUtcMidnight(data.date);
     const source = data.source ?? "unknown";
@@ -460,19 +615,43 @@ export async function writeBrokerSummary(
     }
 
     let foreignFlowBars = 0;
-    for (const point of sumForeignFlow(data.rows)) {
-        const timestamp = toUtcMidnight(point.date);
-        const updated = await prisma.priceBar.updateMany({
-            where: { stockId, timestamp },
-            data: {
-                foreignBuyValue: Math.round(point.foreignBuy),
-                foreignSellValue: Math.round(point.foreignSell),
-            },
-        });
-        foreignFlowBars += updated.count;
+    if (options.syncForeignFlow !== false) {
+        for (const point of sumForeignFlow(data.rows)) {
+            foreignFlowBars += await writeForeignFlowPoint(prisma, stockId, point);
+        }
     }
 
     return { brokerRows: data.rows.length, foreignFlowBars };
+}
+
+/** Tulis satu titik foreign flow ke bar harga yang sudah ada. */
+async function writeForeignFlowPoint(
+    prisma: PrismaClient,
+    stockId: string,
+    point: ForeignFlowPoint,
+): Promise<number> {
+    const timestamp = toUtcMidnight(point.date);
+    const updated = await prisma.priceBar.updateMany({
+        where: { stockId, timestamp },
+        data: {
+            foreignBuyValue: Math.round(point.foreignBuy),
+            foreignSellValue: Math.round(point.foreignSell),
+        },
+    });
+    return updated.count;
+}
+
+/** Simpan deret foreign flow (mis. hasil Sectors/IDX) tanpa menimpa harga. */
+export async function writeForeignFlowToDb(
+    prisma: PrismaClient,
+    stockId: string,
+    points: ForeignFlowPoint[],
+): Promise<number> {
+    let updated = 0;
+    for (const point of points) {
+        updated += await writeForeignFlowPoint(prisma, stockId, point);
+    }
+    return updated;
 }
 
 export interface BrokerSyncResult {
@@ -497,14 +676,30 @@ export async function syncBrokerSummaryForStock(
         brokerRows: 0,
         foreignFlowBars: 0,
     };
+    let usedSectors = false;
 
     for (const date of dates) {
         const data = await provider.getBrokerSummary(stock.yahooSymbol, date);
         if (!data || data.rows.length === 0) continue;
 
-        const written = await writeBrokerSummary(prisma, stock.id, data);
+        // Provider yang punya foreign flow sendiri (Sectors) memakai angka
+        // f_* per broker, bukan menjumlahkan seluruh transaksi broker asing.
+        const useProviderForeignFlow = data.source === "sectors";
+        usedSectors = usedSectors || useProviderForeignFlow;
+        const written = await writeBrokerSummary(prisma, stock.id, data, {
+            syncForeignFlow: !useProviderForeignFlow,
+        });
         result.brokerRows += written.brokerRows;
         result.foreignFlowBars += written.foreignFlowBars;
+    }
+
+    if (result.brokerRows > 0 && usedSectors) {
+        try {
+            const points = await provider.getForeignFlow(stock.yahooSymbol, dates[0]!, dates[dates.length - 1]!);
+            result.foreignFlowBars += await writeForeignFlowToDb(prisma, stock.id, points);
+        } catch (err) {
+            logger.warn({ err, ticker: stock.ticker }, "gagal sinkronisasi foreign flow Sectors");
+        }
     }
 
     return result;

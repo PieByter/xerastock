@@ -29,9 +29,12 @@ export default function AssistantChat({ claudeActive }: { claudeActive: boolean 
         const trimmed = question.trim();
         if (!trimmed || isPending) return;
         setInput("");
+        const history = messages
+            .slice(-8)
+            .map((message) => ({ role: message.role, content: message.text }));
         setMessages((prev) => [...prev, { id: nextId.current++, role: "user", text: trimmed }]);
         startTransition(async () => {
-            const reply = await askAssistant(trimmed);
+            const reply = await askAssistant(trimmed, history);
             setMessages((prev) => [
                 ...prev,
                 { id: nextId.current++, role: "assistant", text: reply.answer, mode: reply.mode },

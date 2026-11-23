@@ -12,7 +12,7 @@ import {
 import { prisma } from "@stock-analyst/db";
 import { marketData } from "../services/marketData";
 import { runScreener } from "../services/screener";
-import { EMBED_COLORS, type ScreenerFilter } from "@stock-analyst/shared";
+import { callClaude, EMBED_COLORS, hasClaudeKey, type ScreenerFilter } from "@stock-analyst/shared";
 import { logger } from "../logger";
 
 export const COMMAND_BUILDERS = [
@@ -77,6 +77,11 @@ export const COMMAND_BUILDERS = [
     new SlashCommandBuilder()
         .setName("report")
         .setDescription("Laporan harian ringkas"),
+
+    new SlashCommandBuilder()
+        .setName("tanya")
+        .setDescription("Tanya asisten AI soal saham/broker flow")
+        .addStringOption((o) => o.setName("pertanyaan").setDescription("Pertanyaan, mis. ringkas broker flow BBCA").setRequired(true)),
 ];
 
 function embed(title: string, color: number, description?: string) {
@@ -120,6 +125,9 @@ export function registerCommands(client: Client) {
                     break;
                 case "report":
                     await handleReport(interaction);
+                    break;
+                case "tanya":
+                    await handleTanya(interaction);
                     break;
                 case "screener":
                     await handleScreener(interaction);
@@ -366,6 +374,67 @@ async function handleStartStop(interaction: ChatInputCommandInteraction, start: 
                 start ? "Scheduler & trade engine aktif." : "Kill switch aktif. Semua eksekusi dihentikan.",
             ),
         ],
+    });
+}
+
+async function handleTanya(interaction: ChatInputCommandInteraction) {
+    await interaction.deferReply();
+    const question = interaction.options.getString("pertanyaan", true).slice(0, 500);
+
+    const stocks = await prisma.stock.findMany({
+        where: { isActive: true },
+        orderBy: { ticker: "asc" },
+        take: 30,
+        include: {
+            priceBars: { orderBy: { timestamp: "desc" }, take: 2 },
+            fundamentalSnapshots: { orderBy: { asOfDate: "desc" }, take: 1 },
+            signals: { orderBy: { createdAt: "desc" }, take: 1 },
+        },
+    });
+
+    const context = stocks
+        .filter((stock) => stock.priceBars.length > 0)
+        .map((stock) => {
+            const [last, prev] = stock.priceBars;
+            const price = Number(last!.close);
+            const change = prev ? ((price - Number(prev.close)) / Number(prev.close)) * 100 : 0;
+            const fundamental = stock.fundamentalSnapshots[0];
+            const signal = stock.signals[0];
+            return `${stock.ticker} | harga ${price.toLocaleString("id-ID")} | ${change >= 0 ? "+" : ""}${change.toFixed(2)}% | PER ${fundamental?.per ?? "—"} | PBV ${fundamental?.pbv ?? "—"} | sinyal ${signal ? `${signal.direction}: ${(signal.reasonJson as string[]).join(", ")}` : "—"}`;
+        })
+        .join("\n");
+
+    const answer = await callClaude(
+        [
+            {
+                role: "user",
+                content: `DATA SAHAM:\n${context}\n\nPERTANYAAN: ${question}\n\nJawab ringkas dalam Bahasa Indonesia berdasarkan data di atas. Jangan memberi rekomendasi beli/jual.`,
+            },
+        ],
+        {
+            system:
+                "Kamu asisten analisis saham IDX. Jawab faktual dari data yang diberikan, maksimal 6 kalimat. " +
+                "Selalu akhiri dengan pengingat bahwa ini analisis, bukan rekomendasi finansial.",
+            maxTokens: 500,
+        },
+    );
+
+    const fallback = stocks
+        .slice(0, 5)
+        .map((stock) => {
+            const last = stock.priceBars[0];
+            return last ? `${stock.ticker} ${Number(last.close).toLocaleString("id-ID")}` : null;
+        })
+        .filter(Boolean)
+        .join(" · ");
+
+    const text =
+        answer ??
+        `Mode demo (ANTHROPIC_API_KEY belum di-set). Ringkasan data: ${fallback || "belum ada data harga"}. ` +
+            "Ini analisis data, bukan rekomendasi beli/jual.";
+
+    await interaction.editReply({
+        embeds: [embed("🤖 Tanya AI", hasClaudeKey() ? EMBED_COLORS.info : EMBED_COLORS.watch, text.slice(0, 3900))],
     });
 }
 

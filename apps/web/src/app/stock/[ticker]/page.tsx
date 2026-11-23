@@ -48,8 +48,19 @@ export default async function StockDetailPage({
 
   if (!detail) notFound();
 
-  const { quote, candles, indicators, fundamentals, signals, stats, levels, brokerSummary, foreignFlow, isDemo } =
-    detail;
+  const {
+    quote,
+    candles,
+    indicators,
+    fundamentals,
+    signals,
+    stats,
+    levels,
+    brokerSummary,
+    foreignFlow,
+    fundamentalSource,
+    isDemo,
+  } = detail;
 
   const rangeDays = RANGE_OPTIONS.find((option) => option.key === rangeKey)!.days;
   const visibleCandles = candles.slice(-rangeDays);
@@ -102,7 +113,7 @@ export default async function StockDetailPage({
       <Card>
         <CardHeader
           title="Chart Harga"
-          subtitle={`Candlestick harian · ${visibleCandles.length} hari`}
+          subtitle={`Candlestick harian/mingguan · ${visibleCandles.length} hari`}
           action={
             <div className="flex gap-0.5 rounded-lg bg-muted p-0.5">
               {RANGE_OPTIONS.map((option) => (
@@ -148,7 +159,13 @@ export default async function StockDetailPage({
         <Card>
           <CardHeader
             title="Fundamental"
-            subtitle={isDemo ? "Data contoh — verifikasi sumber" : "Snapshot terbaru"}
+            subtitle={
+              isDemo
+                ? "Data contoh — verifikasi sumber"
+                : fundamentalSource
+                  ? `Snapshot terbaru · sumber ${fundamentalSource}`
+                  : "Snapshot fundamental belum tersedia"
+            }
           />
           {fundamentals.length === 0 ? (
             <p className="text-sm text-muted-foreground">Data fundamental belum tersedia.</p>
@@ -192,7 +209,18 @@ export default async function StockDetailPage({
           <CardHeader
             title="Net Foreign Flow"
             subtitle="Bar = net harian · garis = net kumulatif"
-            action={foreignFlow ? <Badge tone="info">{foreignFlow.tradingDays} hari</Badge> : undefined}
+            action={
+              foreignFlow ? (
+                <div className="flex items-center gap-2">
+                  {brokerSummary && (
+                    <Badge tone={brokerSummary.source.includes("sample") ? "warning" : "info"}>
+                      sumber broker: {brokerSummary.source}
+                    </Badge>
+                  )}
+                  <Badge tone="info">{foreignFlow.tradingDays} hari</Badge>
+                </div>
+              ) : undefined
+            }
           />
           {foreignFlow ? (
             <>

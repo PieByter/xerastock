@@ -19,18 +19,19 @@ import {
 } from "@stock-analyst/shared";
 import { EmbedBuilder, type TextChannel } from "discord.js";
 import { client } from "./client";
-import { resolveChannel } from "./channels";
+import { createTelegramChannel, resolveChannels } from "./channels";
 import { env } from "../config";
 import { logger } from "../logger";
 
-/** Kirim satu notifikasi ke channel yang sesuai dengan tipe payload. */
+/** Kirim satu notifikasi ke semua channel aktif (Discord + Telegram). */
 export async function sendNotification(payload: NotificationPayload): Promise<boolean> {
-    const channel = resolveChannel(payload);
-    if (!channel) {
+    const channels = resolveChannels(payload);
+    if (channels.length === 0) {
         logger.warn({ type: payload.type }, "channel notifikasi belum dikonfigurasi");
         return false;
     }
-    return channel.send(payload);
+    const results = await Promise.allSettled(channels.map((channel) => channel.send(payload)));
+    return results.some((result) => result.status === "fulfilled" && result.value);
 }
 
 export function createSignalEmbed(signal: SignalMatch): EmbedBuilder {
@@ -119,10 +120,30 @@ export class DiscordNotifier implements NotificationChannel {
     }
 }
 
-/** Implementasi Fallback Notifier Telegram (PRD §10.2) */
+/** Implementasi Notifier Telegram (PRD §10.2) — aktif bila token & chat ID diisi. */
 export class TelegramNotifier implements NotificationChannel {
     async send(signal: SignalMatch): Promise<void> {
-        logger.info({ signalId: signal.id, ticker: signal.ticker }, "TelegramNotifier: Notifikasi disiapkan (PRD §10.2 fallback)");
+        const channel = createTelegramChannel();
+        if (!channel) {
+            logger.debug({ signalId: signal.id }, "Telegram belum dikonfigurasi — notifikasi dilewati");
+            return;
+        }
+
+        const strat = STRATEGY_CONFIG[signal.strategyType];
+        const payload: NotificationPayload = {
+            type: "SIGNAL",
+            title: `🚨 Sinyal ${strat ? strat.shortName : signal.strategyType} — ${signal.ticker}`,
+            description: signal.conditionSummary,
+            color: strat ? parseInt(strat.hexColor.replace("#", ""), 16) : EMBED_COLORS.info,
+            fields: [
+                { name: "Ticker", value: signal.ticker, inline: true },
+                { name: "Arah", value: signal.direction, inline: true },
+                { name: "Harga", value: `Rp ${signal.price.toLocaleString("id-ID")}`, inline: true },
+                { name: "Volume", value: signal.volume.toLocaleString("id-ID"), inline: true },
+            ],
+        };
+        const ok = await channel.send(payload);
+        logger.info({ signalId: signal.id, ticker: signal.ticker, ok }, "notifikasi Telegram diproses");
     }
 }
 
@@ -137,15 +158,19 @@ export async function processOutbox(prisma: PrismaClient): Promise<number> {
     let sent = 0;
     for (const event of pending) {
         const payload = event.payloadJson as unknown as NotificationPayload;
-        const channel = resolveChannel(payload);
+        const channels = resolveChannels(payload);
         try {
-            const ok = channel ? await channel.send(payload) : false;
+            const results = await Promise.allSettled(channels.map((channel) => channel.send(payload)));
+            const successful = channels.filter(
+                (_, index) => results[index]?.status === "fulfilled" && results[index]?.value === true,
+            );
+            const ok = successful.length > 0;
             await prisma.alertEvent.update({
                 where: { id: event.id },
                 data: {
                     status: ok ? "SENT" : "FAILED",
                     sentAt: ok ? new Date() : null,
-                    ...(channel ? { sentTo: channel.name } : {}),
+                    ...(successful.length > 0 ? { sentTo: successful.map((channel) => channel.name).join(",") } : {}),
                 },
             });
             if (ok) sent++;

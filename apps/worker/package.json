@@ -10,6 +10,8 @@
     "build": "tsc -p tsconfig.build.json",
     "db:seed": "tsx src/scripts/seed.ts",
     "news:sync": "tsx src/scripts/newsSync.ts",
+    "fundamentals:sync": "tsx src/scripts/fundamentalsSync.ts",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -27,6 +29,7 @@
     "@types/node": "^20.14.0",
     "@types/node-cron": "^3.0.11",
     "tsx": "^4.16.2",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
   }
 }

@@ -22,16 +22,16 @@ import { marketData, saveLiveQuoteToDb, syncHistoryToDb } from "../services/mark
 import { runBrokerSyncPipeline } from "../services/brokerData";
 import { syncNewsToDb } from "../services/newsData";
 import { runCorporateActionSyncPipeline } from "../services/corporateActionData";
+import { runFundamentalsSyncPipeline } from "../services/fundamentalsData";
 import { isTradingDay } from "../services/marketCalendar";
 import { evaluateStrategyForStock } from "../services/signalEngine";
 import { saveIndicatorSnapshot } from "../services/indicatorSnapshots";
 import { PaperBroker } from "../services/paperBroker";
 import { monitorPositionExits } from "../services/tradeEngine";
-import { DiscordNotifier, processOutbox } from "../bot/notifier";
+import { processOutbox } from "../bot/notifier";
 import { env } from "../config";
 import { logger } from "../logger";
 
-const notifier = new DiscordNotifier();
 const broker = new PaperBroker(prisma);
 
 /** true bila hari ini hari bursa; job pasar dilewati saat libur (FR-DATA-005). */
@@ -101,6 +101,25 @@ async function runSessionEvaluation(sessionType: StrategyType) {
             const candles = await loadRecentCandles(stock.id, 120);
             if (candles.length < 20) continue;
 
+            // Snapshot fundamental terbaru dipakai rule FUNDAMENTAL_* dan
+            // filter valuasi di signal engine. Tanpa ini rule tersebut tidak
+            // pernah match meskipun data sudah tersimpan.
+            const snapshot = await prisma.fundamentalSnapshot.findFirst({
+                where: { stockId: stock.id },
+                orderBy: { asOfDate: "desc" },
+            });
+            const per = snapshot?.per == null ? null : Number(snapshot.per);
+            const pbv = snapshot?.pbv == null ? null : Number(snapshot.pbv);
+            const fundamentals =
+                (per != null && per > 0) || (pbv != null && pbv > 0)
+                    ? {
+                          // PER/PBV negatif (perusahaan merugi / ekuitas negatif)
+                          // tidak boleh lolos rule "valuasi rendah".
+                          per: per != null && per > 0 ? per : undefined,
+                          pbv: pbv != null && pbv > 0 ? pbv : undefined,
+                      }
+                    : undefined;
+
             for (const strategy of strategies) {
                 if (!strategy.stockIds.includes(stock.ticker)) continue;
                 await evaluateStrategyForStock({
@@ -109,6 +128,7 @@ async function runSessionEvaluation(sessionType: StrategyType) {
                     stockId: stock.id,
                     ticker: stock.ticker,
                     candles,
+                    fundamentals,
                     broker,
                 });
             }
@@ -186,6 +206,69 @@ async function runCorporateActionAlerts() {
     await processOutbox(prisma);
 }
 
+/**
+ * Alert CHANNEL_BREAK: harga menembus high/low N hari terakhir.
+ * `conditionJson` = { period?: number, direction?: "above" | "below" }.
+ */
+async function evaluateChannelBreakAlerts(stockId: string, ticker: string, price: number) {
+    const alerts = await prisma.alert.findMany({
+        where: { stockId, type: "CHANNEL_BREAK", status: "ACTIVE" },
+    });
+    if (alerts.length === 0) return;
+
+    const periods = alerts.map((alert) => Number((alert.conditionJson as { period?: number }).period ?? 20));
+    const maxPeriod = Math.max(...periods, 2);
+    const bars = await prisma.priceBar.findMany({
+        where: { stockId },
+        orderBy: { timestamp: "desc" },
+        take: maxPeriod + 1,
+    });
+    // Bar terbaru adalah bar berjalan hari ini; channel dihitung dari hari-hari
+    // sebelumnya supaya breakout tidak membandingkan harga dengan dirinya sendiri.
+    const history = bars.slice(1);
+    if (history.length < 2) return;
+
+    for (const alert of alerts) {
+        const condition = alert.conditionJson as { period?: number; direction?: string };
+        const period = Math.min(Math.max(Number(condition.period ?? 20), 2), history.length);
+        const window = history.slice(0, period);
+        const high = Math.max(...window.map((bar) => Number(bar.high)));
+        const low = Math.min(...window.map((bar) => Number(bar.low)));
+        const direction = condition.direction === "below" ? "below" : "above";
+        const level = direction === "above" ? high : low;
+        const triggered = direction === "above" ? price > level : price < level;
+        if (!triggered) continue;
+
+        await prisma.alertEvent.create({
+            data: {
+                alertId: alert.id,
+                type: "PRICE_ALERT",
+                sentTo: "discord",
+                status: "QUEUED",
+                payloadJson: {
+                    type: "PRICE_ALERT",
+                    title: `📈 Channel break — ${ticker}`,
+                    description: `Harga ${price.toLocaleString("id-ID")} ${
+                        direction === "above" ? "menembus resistance" : "menembus support"
+                    } ${level.toLocaleString("id-ID")} (${period} hari).`,
+                    fields: [
+                        { name: "Ticker", value: ticker, inline: true },
+                        { name: "Level", value: level.toLocaleString("id-ID"), inline: true },
+                        { name: "Arah", value: direction.toUpperCase(), inline: true },
+                    ],
+                },
+            },
+        });
+
+        if (!alert.repeat) {
+            await prisma.alert.update({
+                where: { id: alert.id },
+                data: { status: "TRIGGERED", lastTriggeredAt: new Date() },
+            });
+        }
+    }
+}
+
 /** Refresh quote (harga baru dari provider) & evaluasi alert harga saat jam bursa. */
 async function runQuoteRefresh() {
     if (!(await marketOpenToday())) return;
@@ -231,6 +314,8 @@ async function runQuoteRefresh() {
                     }
                 }
             }
+
+            await evaluateChannelBreakAlerts(stock.id, stock.ticker, price);
         } catch (err) {
             logger.error({ err, ticker: stock.ticker }, "error di quote refresh");
         }
@@ -254,6 +339,13 @@ async function runBrokerSync() {
     if (!(await marketOpenToday())) return;
     const stocks = await getActiveStocks();
     await runBrokerSyncPipeline(prisma, stocks);
+}
+
+/** Sinkronisasi fundamental + profil emiten (Yahoo) sekali sehari setelah EOD. */
+async function runFundamentalsSync() {
+    if (!(await marketOpenToday())) return;
+    const stocks = await getActiveStocks();
+    await runFundamentalsSyncPipeline(prisma, stocks);
 }
 
 /** Sinkronisasi corporate action (PRD §4.4) — mengisi tabel yang dibaca job reminder. */
@@ -293,6 +385,9 @@ export function startScheduler() {
     // 5b. Sinkronisasi corporate action: 17:00 WIB (setelah broker sync)
     cron.schedule("0 17 * * 1-5", runCorporateActionSync, { timezone: env.BOT_TIMEZONE });
 
+    // 5c. Fundamental + profil emiten: 16:45 WIB (setelah harga & broker)
+    cron.schedule("45 16 * * 1-5", runFundamentalsSync, { timezone: env.BOT_TIMEZONE });
+
     // 6. Quote refresh: tiap 5 menit saat jam bursa (09:00–15:30 WIB, Senin–Jumat)
     cron.schedule("*/5 9-15 * * 1-5", runQuoteRefresh, { timezone: env.BOT_TIMEZONE });
 
@@ -308,6 +403,6 @@ export function startScheduler() {
     });
 
     logger.info(
-        "scheduler aktif (BPJS 09:00–10:30 WIB, BSJP 14:30–15:50 WIB, Swing 16:00 WIB, broker sync 16:30 WIB, corporate action 17:00 WIB, berita tiap 30 menit)",
+        "scheduler aktif (BPJS 09:00–10:30 WIB, BSJP 14:30–15:50 WIB, Swing 16:00 WIB, broker sync 16:30 WIB, fundamental 16:45 WIB, corporate action 17:00 WIB, berita tiap 30 menit)",
     );
 }

@@ -9,6 +9,7 @@ import { startBot } from "./bot/client";
 import { startScheduler } from "./scheduler";
 import { ensureSeedData } from "./services/seed";
 import { syncCalendarFromEnv } from "./services/marketCalendar";
+import { runFundamentalsSyncPipeline } from "./services/fundamentalsData";
 import { logger } from "./logger";
 
 async function main() {
@@ -46,6 +47,23 @@ async function main() {
 
     // Mulai scheduler (selalu jalan, terlepas dari status bot)
     startScheduler();
+
+    // Backfill fundamental untuk saham yang belum punya snapshot. Dijalankan
+    // di background supaya startup bot tetap cepat dan tidak bergantung pada
+    // ketersediaan Yahoo.
+    void (async () => {
+        try {
+            const stocks = await prisma.stock.findMany({
+                where: { isActive: true, fundamentalSnapshots: { none: {} } },
+            });
+            if (stocks.length > 0) {
+                logger.info({ stocks: stocks.length }, "backfill fundamental awal");
+                await runFundamentalsSyncPipeline(prisma, stocks);
+            }
+        } catch (err) {
+            logger.error({ err }, "backfill fundamental gagal — worker tetap lanjut");
+        }
+    })();
 
     // Mulai Discord bot
     await startBot();
